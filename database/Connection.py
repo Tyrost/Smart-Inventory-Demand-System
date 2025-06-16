@@ -30,6 +30,7 @@ class Connection:
             self.engine = create_engine(DATABASE_URL)
             SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
             self.session = SessionLocal()
+            
         
         except Exception as error:
             log.error(f"There was an error when attempting connection with host {self.host}\n Error: {error}")
