@@ -23,7 +23,7 @@ class Forecast(Base):
     
 class Inventory(Base):
     __tablename__ = "inventory"
-    log_id = Column(VARCHAR(20))
+    log_id = Column(VARCHAR(20), primary_key=True)
     product_id = Column(VARCHAR(20))
     log_date = Column(DATE())
     quantity_in = Column(INTEGER())
@@ -32,7 +32,7 @@ class Inventory(Base):
 
 class Sale(Base):
     __tablename__ = "sales"
-    sale_id = Column(VARCHAR(20))
+    sale_id = Column(VARCHAR(20), primary_key=True)
     product_id = Column(VARCHAR(20))
     sales_date = Column(DATE())
     quantity_sold = Column(INTEGER())
@@ -41,7 +41,7 @@ class Sale(Base):
     
 class Stock(Base):
     __tablename__ = "stock"
-    status_id = Column(VARCHAR(20))
+    status_id = Column(VARCHAR(20), primary_key=True)
     product_id = Column(VARCHAR(20))
     status_date = Column(DATE())
     stock_level = Column(INTEGER())
