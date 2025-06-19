@@ -11,14 +11,11 @@ logger = log.getLogger(__name__)
 
 class Commander(Connection):
     def __init__(self, table:str) -> None:
-        
+        super().__init__()
         self.table_name = table
 
         self.cmd = None
         self.__set_cmd()
-        
-        self.session = self.get_session()
-        
         
     def __set_cmd(self):
         
@@ -45,7 +42,7 @@ class Commander(Connection):
 
     
     def search_values(self, column:str, name:str, attribute:str = None) -> Union[List[Union[Inventory, Sale, Stock, Forecast, Product]], Union[str, int]]:
-        try:
+        try:          
             model = getattr(self.cmd, column) # self.cmd."some_attribute"
             records = self.session.query(self.cmd).filter(model == name).all()
             
@@ -62,7 +59,7 @@ class Commander(Connection):
         except Exception as error:
             log.error(error)
     
-    def create_item(self, elements:dict)->str:
+    def create_item(self, elements:dict)->int:
         '''
         Expects a dictionary with the necessary fields for the command-chosen class
         to populate the table with this new record.
@@ -72,17 +69,20 @@ class Commander(Connection):
             "very_specific_field": "val1"
         }
         ```
+        Returns a status code element upload.
         '''
         try:
-            if not is_valid_schema_input(elements):
-                return f"Data failed to commit due to invalid schema structure"
+            if not is_valid_schema_input(elements, self.table_name):
+                return 406 # if invalid schema passed for this table object...
             
             new_item = self.cmd(**elements)
             self.session.add(new_item)
             self.session.commit()
-            return "Data successfully committed"
+            return 200
+        
         except Exception as error:
-            return f"Data failed to commit: {error}"
+            log.error(error)
+            return 400
 
     def update_value(self, id_type:dict, attribute:str, new_value):
         try:

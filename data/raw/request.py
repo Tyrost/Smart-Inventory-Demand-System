@@ -1,8 +1,7 @@
 from config.secret_load import get_secret
 import requests
 import random
-import json
-from typing import Union, List
+from typing import List
 import logging as log
 
 class Builder:
@@ -40,7 +39,9 @@ class Builder:
             "Curtains",         "Rug",              "Mirror",           "Shelf",            "Storage Bin"
         ]
     
-    def __call(params:str):
+        self.__get_random()
+    
+    def __call(self, params:str):
         try:
             BASE = "https://serpapi.com/search.json?"
             
@@ -56,27 +57,23 @@ class Builder:
     
     def __get_random(self):
         choice = random.choice(self.products)
-        return choice
+        self.product = choice
 
     def execute(self) -> str:
         try:
-            product = self.__get_random()
+            
             KEY = get_secret("SERPAPI_KEY")
             params = {
                 "engine": "amazon",
-                "k": product, # k is the search item.
+                "k": self.product, # k is the search item.
                 "api_key": KEY
             }
 
             data_aggregate:dict = self.__call(params)
             data:List[dict] = data_aggregate["organic_results"][6:16] # only get 10 products and skip the first 6 products as these are sponsored
-
-
-            with open(f"data/raw/{product}_product.json", "w") as file:
-                json.dump(data, file, indent=4)
             
-            return "Success"
+            return data
             
         except Exception as error:
-            log,error(error)
+            log.error(error)
             return "Failure"

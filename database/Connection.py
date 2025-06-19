@@ -35,9 +35,3 @@ class Connection:
         except Exception as error:
             log.error(f"There was an error when attempting connection with host {self.host}\n Error: {error}")
             return None
-    
-    def get_session(self):
-        try:
-            return self.session
-        except Exception:
-            log.error("An error occurred.")

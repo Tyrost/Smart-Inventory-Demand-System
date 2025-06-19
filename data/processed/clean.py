@@ -1,9 +1,6 @@
-
-import os
 from datetime import date
-import json
 import random
-from pprint import pprint
+from data.raw.request import Builder
 
 def create_id():
     '''
@@ -54,43 +51,32 @@ def get_cost(price:float):
  
 def get_clean():
     
-    dir = next(os.walk("data/raw/"))[2]
+    result = []
+
+    builder = Builder()
+    cat = builder.product.lower()
+    data = builder.execute()
     
-    for file in dir:
-        if not ".json" in file:
-            continue
+    for product in data:
+        ID = create_id()
+        NAME = get_name(product["title"])
+        CATEGORY = cat
+        PRICE = float(product["price"].replace("$", "")) # selling price. Clean the number first to match out db
+        COST = get_cost(PRICE)
         
-        with open(f"data/raw/{file}", "r") as f:
-            data = json.load(f)
-            
-            try:
-                with open("data/processed/master.json", "r") as f:
-                    master_data = json.load(f)
-            except FileNotFoundError:
-                master_data = []
-            
-            for product in data:
-                ID = create_id()
-                NAME = get_name(product["title"])
-                CATEGORY = file.split(".")[1].lower()
-                PRICE = float(product["price"].replace("$", "")) # selling price. Clean the number first to match out db
-                COST = get_cost(PRICE)
-                
-                new = {
-                    "product_id": ID,
-                    "product_name": NAME,
-                    "category": CATEGORY,
-                    "unit_price": PRICE,
-                    "cost": COST
-                }
-                
-                master_data.append(new)
+        new = {
+            "product_id": ID,
+            "product_name": NAME,
+            "category": CATEGORY,
+            "unit_price": PRICE,
+            "cost": COST
+        }
         
+        result.append(new)
+        
+    return result
 
-            with open("data/processed/master.json", "w") as f:
-                json.dump(master_data, f, indent=4)
-            
-    return "Done"
-
-
-print(get_clean())
+# if __name__ == "__main__":
+#     from pprint import pprint
+    
+#     pprint(get_clean())
