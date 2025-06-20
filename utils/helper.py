@@ -1,6 +1,7 @@
+import os
+import shutil
 
-
-# ________________________ Data Base 
+# ________________________ Data Base ________________________ #
 
 def table_structure(table:str)->dict:
     '''
@@ -15,7 +16,7 @@ def table_structure(table:str)->dict:
                 "product_name": str,
                 "category": str,
                 "unit_price": float,
-                "cost": float
+                "cost": float,
             }
         case "forecast":
             target = {
@@ -43,7 +44,8 @@ def table_structure(table:str)->dict:
                 "sales_date": str,
                 "quantity_sold": int,
                 "sale_price": float,
-                "location": str
+                "location": str,
+                "customer_id": str
             }
         case "stock":
             target = {
@@ -72,3 +74,15 @@ def is_valid_schema_input(attempt:dict, table:str):
             return False
         
     return True # return true if every check passes
+
+# ___________________________________________________________________ #
+
+def clean_pycache():
+    '''
+    Removes annoying __pycache__ files after every execution
+    '''
+    for dirpath, dirnames, _ in os.walk("."):
+        for dirname in dirnames:
+            if dirname == "__pycache__":
+                full_path = os.path.join(dirpath, dirname)
+                shutil.rmtree(full_path, ignore_errors=True)

@@ -3,6 +3,8 @@ import requests
 import random
 from typing import List
 import logging as log
+import json
+import os
 
 class Builder:
     '''
@@ -12,6 +14,8 @@ class Builder:
     API Documentation:
     https://serpapi.com/search-api
 
+    This API is uses web-scraping tools to then transform into an API. This is greatly fitting for what
+    we are trying to achieve.
     '''
     # for practice sake, I will choose from a finite random set of products and get 10 products to then analyze.
     def __init__(self):
@@ -38,8 +42,13 @@ class Builder:
             "Flashlight",       "First Aid Kit",    "Fire Extinguisher","Smoke Detector",   "Door Mat",
             "Curtains",         "Rug",              "Mirror",           "Shelf",            "Storage Bin"
         ]
-    
+
+        self.product = None
+        self.raw_data = None # return value
+        
         self.__get_random()
+    
+    # __________________________________________________________________________________________ #
     
     def __call(self, params:str):
         try:
@@ -57,22 +66,48 @@ class Builder:
     
     def __get_random(self):
         choice = random.choice(self.products)
+        choice = choice.replace(" ", "").strip()
         self.product = choice
+        
+    def __handle_json(self, data)->None: # remove if/when in production
+        '''
+        We only want to keep one raw data file in there for demonstration
+        and maybe for debugging. The rest is useless, as there may turn into 
+        duplicates and GitHub will complain if I start overloading my data pushes.
+        '''
+        
+        base = "data/raw/log/"
+        
+        files:list = os.listdir(base)
+        
+        if len(files) != 0:
+            for file in files:
+                file_path = os.path.join(base, file)
+                os.remove(file_path)
+        
+        with open(f"data/raw/log/{self.product}_product.json", "w") as file:
+            json.dump(data, file, indent=4)
+            
 
-    def execute(self) -> str:
+    # ______________________________________ Usage Methods ______________________________________ #
+    
+    def execute(self) -> None:
         try:
             
             KEY = get_secret("SERPAPI_KEY")
             params = {
                 "engine": "amazon",
-                "k": self.product, # k is the search item.
+                "k": self.product, # k is the search item. Ik, weird name.
                 "api_key": KEY
             }
 
             data_aggregate:dict = self.__call(params)
+            # WE CAN FURTHER ENHANCE THIS BY ACCEPTING RANDOM POOLS OF INDEXES (while keep 10 still) RATHER THAN HARD-CODED POSITIONS.
             data:List[dict] = data_aggregate["organic_results"][6:16] # only get 10 products and skip the first 6 products as these are sponsored
             
-            return data
+            self.__handle_json(data)
+            
+            self.raw_data = data
             
         except Exception as error:
             log.error(error)

@@ -1,7 +1,9 @@
 
 from database.Connection import Connection
 from database.models import *
-from utils.helper import is_valid_schema_input
+from utils.helper import is_valid_schema_input, table_structure
+
+from sqlalchemy import select, distinct
 
 from typing import List, Union
 
@@ -26,8 +28,8 @@ class Commander(Connection):
             case "forecast":
                 self.cmd = Forecast
                 return
-            case "inventory":
-                self.cmd = Inventory
+            case "inventory_log":
+                self.cmd = InventoryLog
                 return
             case "sales":
                 self.cmd = Sale
@@ -38,10 +40,14 @@ class Commander(Connection):
             
         raise LookupError(f"Invalid table name: {self.table_name} received")
     
+    def __is_valid_attribute(self, value:str)->bool:
+        struct = table_structure(self.table_name)
+        return value in struct
+    
     # ____________________ Usage Endpoints ____________________ #
 
     
-    def search_values(self, column:str, name:str, attribute:str = None) -> Union[List[Union[Inventory, Sale, Stock, Forecast, Product]], Union[str, int]]:
+    def search_values(self, column:str, name:str, attribute:str = None) -> Union[List[Union[InventoryLog, Sale, Stock, Forecast, Product]], Union[str, int]]:
         try:          
             model = getattr(self.cmd, column) # self.cmd."some_attribute"
             records = self.session.query(self.cmd).filter(model == name).all()
@@ -83,9 +89,28 @@ class Commander(Connection):
         except Exception as error:
             log.error(error)
             return 400
+        
+    def read_cols(self, value, filter:dict=None)->dict:
+        try:
+            if not (self.__is_valid_attribute(value)): # validate
+                print("attribute was not valid")
+                return []
+            
+            query = self.session.query(self.cmd)
+            if filter:
+                query:list = query.filter_by(**filter)
+            
+            records = query.all()
+            
+            return [getattr(record, value) for record in records]
+        except Exception as error:
+            log.error(error)
 
     def update_value(self, id_type:dict, attribute:str, new_value):
         try:
+            if not (self.__is_valid_attribute(attribute)): # validate passed attribute
+                return None
+            
             item = self.session.query(self.cmd).filter_by(**id_type).first()
             if item:
                 setattr(item, attribute, new_value)
@@ -93,3 +118,12 @@ class Commander(Connection):
             return item 
         except Exception as error:
             log.error(f"There was an error: {error}")
+            
+    def get_unique(self, unique_val):
+        try:
+            attribute = getattr(self.cmd, unique_val)
+            array = self.session.execute(select(distinct(attribute))).scalars().all()
+            return array
+        
+        except Exception as error:
+            log.error(f"An error ocurred when fetching unique values: {error}")
