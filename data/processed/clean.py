@@ -1,6 +1,7 @@
 from datetime import date
 import random
 from data.raw.Builder import Builder
+import pandas as pd
 
 class Clean(Builder):
     
@@ -8,6 +9,7 @@ class Clean(Builder):
         
         super().__init__()
         
+        self.clean_df = None
         self.execute()
 
     @staticmethod
@@ -61,8 +63,13 @@ class Clean(Builder):
     def get_raw_data(self):
         return self.raw_data
     
+    def get_raw(self):
+        return self.raw_data
+    
+    def get_dataframe(self):
+        return self.clean_df
+    
     def get_clean(self):
-        
         result = []
         data = self.raw_data
         
@@ -82,5 +89,7 @@ class Clean(Builder):
             }
             
             result.append(new)
+        
+        self.clean_df = pd.DataFrame(result)
             
         return result

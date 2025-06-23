@@ -1,5 +1,7 @@
 import os
 import shutil
+import uuid
+from datetime import date
 
 # ________________________ Data Base ________________________ #
 
@@ -86,3 +88,12 @@ def clean_pycache():
             if dirname == "__pycache__":
                 full_path = os.path.join(dirpath, dirname)
                 shutil.rmtree(full_path, ignore_errors=True)
+
+def create_status_id():
+    '''
+    For stock data usage
+    '''
+    base = str(uuid.uuid4())
+    current_date = str(date.today())
+    
+    return base + "-" + current_date

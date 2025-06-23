@@ -37,8 +37,8 @@ class Commander(Connection):
             case "stock":
                 self.cmd = Stock
                 return
-            
-        raise LookupError(f"Invalid table name: {self.table_name} received")
+            case _:
+                raise LookupError(f"Invalid table name: {self.table_name} received")
     
     def __is_valid_attribute(self, value:str)->bool:
         struct = table_structure(self.table_name)
@@ -46,6 +46,9 @@ class Commander(Connection):
     
     # ____________________ Usage Endpoints ____________________ #
 
+    def checkout_table(self, new_table):
+        self.table_name = new_table
+        self.__set_cmd()
     
     def search_values(self, column:str, name:str, attribute:str = None) -> Union[List[Union[InventoryLog, Sale, Stock, Forecast, Product]], Union[str, int]]:
         try:          
