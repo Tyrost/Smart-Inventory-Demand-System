@@ -33,7 +33,7 @@ class Builder:
             "Iron",             "Umbrella",         "Wallet",           "Sunglasses",       "Gloves",
             "Scarf",            "Hat",              "Measuring Tape",   "Screwdriver",      "Hammer",
             "Pliers",           "Drill",            "Extension Cord",   "Power Strip",      "Router",
-            "Webcam",           "Microphone",       "External Hard Drive","USB Drive",          "Printer",
+            "Webcam",           "Microphone",       "External Hard Drive","USB Drive",      "Printer",
             "Scanner",          "Paper Shredder",   "Calculator",       "Stapler",          "Scissors",
             "Tape Dispenser",   "Folder",           "Binder",           "Highlighter",      "Eraser",
             "Glue Stick",       "Markers",          "Crayons",          "Paint Brush",      "Canvas",

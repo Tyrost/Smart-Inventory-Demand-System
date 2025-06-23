@@ -1,36 +1,58 @@
 
 from database.Commander import Commander
-from random import randint
-
 from data.processed.Clean import Clean 
 from data.Allocate import Allocate
 
+from random import randint
 from pprint import pprint
+from datetime import date
 
-def allocate(category, commander:Commander, rating_engine:Allocate):
+from utils.helper import create_status_id
+from data.pipeline import upload
+
+def allocate(products:list, rating_engine:Allocate):
+    total = randint(300, 2500) # choose from a pool of up to 2500 items per category
     
-    total = randint(300, 2500) #choose from a pool of up to 2500 items per category
-    products = commander.read_cols("product_name", filter={"category": category}) # get the product names for this category
-    
-    print(f"\nTotal products chosen: {total} for category: {category}\n")
-    
-    if len(products) != 10: # ensure there are 10 products
-        raise Exception(f"Expected 10 products in category '{category}', got {len(products)}")
-    
-    allocations = []
-    
+    allocations = {}
     dataframe = rating_engine.allocate_adjusted(total)
 
-    for index, product in enumerate(products):
-        product_row = dataframe.iloc[index]
+    for index, product in enumerate(products): # get row by row and extract the allocation stock value-by-value
+        product_row = dataframe.iloc[index] 
         
         allocation = int(product_row["adjusted_allocation"])
-        allocations.append((product, allocation))
+        allocations[product["product_name"]] = allocation
 
     return allocations
        
-        
-def map_allocations()->dict:
+def parse_allocations(allocations:dict, IDs:list):
+    '''
+    preparation for database intake.
+    Takes the IDs of the products and matches them accordingly 
+    via index.
+    '''
+    parsed_data = []
+    
+    length = len(allocations) # should always be 10
+    
+    status_ids = [create_status_id() for i in range(length)]
+    product_ids = IDs
+    status_date = date.today()
+    stock_level = list(allocations.get_values())
+    is_stockout = [True if value == 0 else False for value in stock_level]
+    
+    for index in range(length):
+        stock = {
+            "status_ids": status_ids[index],
+            "product_ids": product_ids[index],
+            "status_date": status_date[index],
+            "stock_level": stock_level[index],
+            "is_stockout": is_stockout[index]
+        }
+        parsed_data.append(stock)
+    
+    return parsed_data
+
+def map_allocations(num_categories:int)->dict:
     '''
     Don't mind the brain dump :) 
     There are exactly 10 different products for every unique category. Hence we will choose a fitting range
@@ -53,24 +75,29 @@ def map_allocations()->dict:
     
     ^^^ Obsolete ^^^
     '''
-    result = {}
     
-    clean = Clean()
-    products = clean.get_clean()
-    raw_data = clean.raw_data
-    rating = Allocate(raw_data)
-
-    commander = Commander("products")
-    for product in products:
-        commander.create_item(product)
+    for i in range(num_categories): # 10 product API calls
+        
+        clean = Clean()
+        products = clean.get_clean() # for upload
+        raw_data = clean.get_raw()
+        rating = Allocate(raw_data)
+        
+        if not products:
+            print(f"No products listing found for iteration count: {i+1}. Continuing")
+            continue
+        
+        product_ids:list = clean.get_dataframe()["product_id"] # get the id vector of our clean dataframe
+        allocations = allocate(products, rating) # initialize allocation division algorithm
+        
+        parsed_stock_data:list = parse_allocations(allocations, product_ids) # prepare stock data for upload
+        
+        # populate database with the clean product data
+        commander = Commander("products")
+        
+        # call to upload data onto database
+        # it will already ensure schema validation
+        upload(products, "products", commander)
+        upload(parsed_stock_data, "stock", commander)
     
-    categories = commander.get_unique("category")
-
-    for category in categories:
-        allocations = allocate(category, commander, rating)
-        result[category] = allocations
-
-    return result
-
-if __name__ == "__main__":
-    pprint(map_allocations(), sort_dicts=False)
+    return
