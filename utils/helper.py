@@ -3,6 +3,8 @@ import shutil
 import uuid
 from datetime import date
 
+from random import choices
+
 # ________________________ Data Base ________________________ #
 
 def table_structure(table:str)->dict:
@@ -43,7 +45,7 @@ def table_structure(table:str)->dict:
             target = {
                 "sale_id": str,
                 "product_id": str,
-                "sales_date": str,
+                "sale_date": date,
                 "quantity_sold": int,
                 "sale_price": float,
                 "location": str,
@@ -53,9 +55,9 @@ def table_structure(table:str)->dict:
             target = {
                 "status_id": str,
                 "product_id": str,
-                "status_date": str,
+                "status_date": date,
                 "stock_level": int,
-                "is_stockout": int
+                "is_stockout": bool
             }
         
     return target
@@ -93,7 +95,13 @@ def create_status_id():
     '''
     For stock data usage
     '''
-    base = str(uuid.uuid4())
+    base = str(uuid.uuid4())[:8] # make sure its adding up to 20 (for schema type maximum VARCHAR)
     current_date = str(date.today())
     
-    return base + "-" + current_date
+    return current_date + "-" + base
+
+def create_sale_id():
+    current_date = str(date.today()).replace("-", "")
+    id = ''.join(choices('0123456789', k=12))
+        
+    return current_date + id 
