@@ -3,7 +3,7 @@ from database.Connection import Connection
 from database.models import *
 from utils.helper import is_valid_schema_input, table_structure
 
-from sqlalchemy import select, distinct
+from sqlalchemy import select, distinct, func
 
 from typing import List, Union
 
@@ -47,6 +47,8 @@ class Commander(Connection):
     # ____________________ Usage Endpoints ____________________ #
 
     def checkout_table(self, new_table):
+        if self.table_name == new_table:
+            return
         self.table_name = new_table
         self.__set_cmd()
     
@@ -93,7 +95,26 @@ class Commander(Connection):
             log.error(error)
             return 400
         
-    def read_cols(self, value, filter:dict=None)->dict:
+    def count_records(self):
+        try:
+            query = select(func.count()).select_from(self.cmd)
+            executed = self.session.execute(query)
+            return executed.scalar()
+        
+        except Exception as error:
+            log.error(error)
+        
+    def read_row_index(self, index:int)->dict:
+        try:
+            query = select(self.cmd).limit(1).offset(index)
+            result = self.session.execute(query)
+            row = result.scalar_one()
+            return row.to_dict()
+        
+        except Exception as error:
+            log.error(error)
+    
+    def read_cols(self, value, filter:dict=None)->list:
         try:
             if not (self.__is_valid_attribute(value)): # validate
                 print("attribute was not valid")

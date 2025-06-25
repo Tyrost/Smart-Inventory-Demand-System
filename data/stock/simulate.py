@@ -1,20 +1,18 @@
-
 from database.Commander import Commander
 from data.processed.Clean import Clean 
-from data.Allocate import Allocate
+from data.stock.Allocate import Allocate
 
 from random import randint
-from pprint import pprint
 from datetime import date
 
 from utils.helper import create_status_id
 from data.pipeline import upload
 
-def allocate(products:list, rating_engine:Allocate):
+def allocate(products:list, allocation_engine:Allocate):
     total = randint(300, 2500) # choose from a pool of up to 2500 items per category
     
     allocations = {}
-    dataframe = rating_engine.allocate_adjusted(total)
+    dataframe = allocation_engine.allocate_adjusted(total)
 
     for index, product in enumerate(products): # get row by row and extract the allocation stock value-by-value
         product_row = dataframe.iloc[index] 
@@ -23,7 +21,7 @@ def allocate(products:list, rating_engine:Allocate):
         allocations[product["product_name"]] = allocation
 
     return allocations
-       
+
 def parse_allocations(allocations:dict, IDs:list):
     '''
     preparation for database intake.
@@ -37,14 +35,14 @@ def parse_allocations(allocations:dict, IDs:list):
     status_ids = [create_status_id() for i in range(length)]
     product_ids = IDs
     status_date = date.today()
-    stock_level = list(allocations.get_values())
+    stock_level = list(allocations.values())
     is_stockout = [True if value == 0 else False for value in stock_level]
     
     for index in range(length):
         stock = {
-            "status_ids": status_ids[index],
-            "product_ids": product_ids[index],
-            "status_date": status_date[index],
+            "status_id": status_ids[index],
+            "product_id": product_ids[index],
+            "status_date": status_date,
             "stock_level": stock_level[index],
             "is_stockout": is_stockout[index]
         }
@@ -52,7 +50,7 @@ def parse_allocations(allocations:dict, IDs:list):
     
     return parsed_data
 
-def map_allocations(num_categories:int)->dict:
+def map_allocations(num_categories:int, database_engine:Commander)->dict:
     '''
     Don't mind the brain dump :) 
     There are exactly 10 different products for every unique category. Hence we will choose a fitting range
@@ -78,26 +76,24 @@ def map_allocations(num_categories:int)->dict:
     
     for i in range(num_categories): # 10 product API calls
         
-        clean = Clean()
-        products = clean.get_clean() # for upload
-        raw_data = clean.get_raw()
+        builder = Clean()
+        
+        products = builder.get_clean() # for upload
+        raw_data = builder.get_raw()
         rating = Allocate(raw_data)
         
         if not products:
             print(f"No products listing found for iteration count: {i+1}. Continuing")
             continue
         
-        product_ids:list = clean.get_dataframe()["product_id"] # get the id vector of our clean dataframe
+        product_ids:list = builder.get_dataframe()["product_id"] # get the id vector of our clean dataframe
         allocations = allocate(products, rating) # initialize allocation division algorithm
         
         parsed_stock_data:list = parse_allocations(allocations, product_ids) # prepare stock data for upload
         
-        # populate database with the clean product data
-        commander = Commander("products")
-        
         # call to upload data onto database
         # it will already ensure schema validation
-        upload(products, "products", commander)
-        upload(parsed_stock_data, "stock", commander)
+        upload(products, "products", database_engine)
+        upload(parsed_stock_data, "stock", database_engine)
     
     return
