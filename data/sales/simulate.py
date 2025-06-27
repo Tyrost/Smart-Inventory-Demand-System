@@ -1,12 +1,15 @@
 from database.Commander import Commander
-from utils.helper import create_sale_id
+from utils.helper import create_sale_id, create_invlog_id
 
 from random import randint, choices
 from typing import List
 from math import ceil, floor
 from datetime import date
 
-def simulate_sell(database_engine:Commander, data:List[dict], stock_to_sell:int):
+def simulate_sell(database_engine:Commander, data:List[dict], stock_to_sell:int)->None:
+    '''
+    Populates databases
+    '''
     i = 0
     count = 0
     while(stock_to_sell != 0):
@@ -44,10 +47,10 @@ def simulate_sell(database_engine:Commander, data:List[dict], stock_to_sell:int)
             "location": location,
             "customer_id": customer_id
             }
+        
         # create sale with data gathering upload
         database_engine.checkout_table("sales")
         status = database_engine.create_item(sale)
-        
         if status != 200:
             raise Exception(f"An error occurred when uploading `sale` data. Code: {status}")
         
@@ -63,6 +66,26 @@ def simulate_sell(database_engine:Commander, data:List[dict], stock_to_sell:int)
         database_engine.checkout_table("stock")
         database_engine.update_value({"product_id": product_id}, "stock_level", product_stock)
         
+        # keep track within our inventory log
+        if quantity_sold != 0:
+            database_engine.checkout_table("inventory_log")
+            log_id = create_invlog_id()
+            
+            log_update = {
+                "log_id": log_id,
+                "product_id": product_id,
+                "log_date": sale_date,
+                "quantity_change": -1 * quantity_sold,
+                "stock_level": product_stock,
+                "warehouse": "United Warehouse Main, Washington, US", # CONSIDER NOT HARDCODING (?)
+                "change_type": "sale",
+                "reference_id": sale_id # for foreign key
+            }
+            
+            status = database_engine.create_item(log_update)
+            if status != 200:
+                raise Exception(f"An error occurred when uploading `logging` data. Code: {status}")
+            
         # update counter and increase index value
         count += 1
         i += 1
@@ -99,5 +122,4 @@ def map_sales(database_engine:Commander):
     
     # the function will handle data storage and simulation over iterations
     # it will also distribute the total stock onto the products chosen
-    count = simulate_sell(database_engine, data=rows, stock_to_sell=total_sold)
-    return count
+    simulate_sell(database_engine, data=rows, stock_to_sell=total_sold)

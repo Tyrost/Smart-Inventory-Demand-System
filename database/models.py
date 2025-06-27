@@ -22,7 +22,7 @@ class Forecast(Base): # Measure
     model_used = Column(VARCHAR(50))
     
 class InventoryLog(Base): # Fabricate your own
-    __tablename__ = "inventory"
+    __tablename__ = "inventory_log"
     log_id = Column(VARCHAR(20), primary_key=True, unique=True)
     product_id = Column(VARCHAR(20), nullable=False)
     log_date = Column(DATE(), nullable=False)

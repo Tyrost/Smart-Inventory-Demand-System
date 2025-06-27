@@ -70,6 +70,8 @@ class Commander(Connection):
         except Exception as error:
             log.error(error)
     
+    # ____________________ Create ____________________ #
+    
     def create_item(self, elements:dict)->int:
         '''
         Expects a dictionary with the necessary fields for the command-chosen class
@@ -94,7 +96,9 @@ class Commander(Connection):
         except Exception as error:
             log.error(error)
             return 400
-        
+
+    # ____________________ Read ____________________ #
+    
     def count_records(self):
         try:
             query = select(func.count()).select_from(self.cmd)
@@ -114,22 +118,25 @@ class Commander(Connection):
         except Exception as error:
             log.error(error)
     
-    def read_cols(self, value, filter:dict=None)->list:
+    def read_cols(self, value=None, filter:dict=None, limit=None)->list:
         try:
-            if not (self.__is_valid_attribute(value)): # validate
-                print("attribute was not valid")
-                return []
-            
             query = self.session.query(self.cmd)
             if filter:
-                query:list = query.filter_by(**filter)
-            
-            records = query.all()
-            
+                query = query.filter_by(**filter)
+                
+            records = query.all() if not limit else query.limit(limit).all()
+            if value is None:
+                return [record.__dict__.copy() for record in records]  # careful, includes _sa_instance_state
+            else:
+                if not self.__is_valid_attribute(value):  # validate
+                    print("attribute was not valid")
+                    return []
             return [getattr(record, value) for record in records]
         except Exception as error:
             log.error(error)
 
+    # ____________________ Update ____________________ #
+    
     def update_value(self, id_type:dict, attribute:str, new_value):
         try:
             if not (self.__is_valid_attribute(attribute)): # validate passed attribute
@@ -142,7 +149,9 @@ class Commander(Connection):
             return item 
         except Exception as error:
             log.error(f"There was an error: {error}")
-            
+    
+    # ____________________ Misc ____________________ # 
+     
     def get_unique(self, unique_val):
         try:
             attribute = getattr(self.cmd, unique_val)
