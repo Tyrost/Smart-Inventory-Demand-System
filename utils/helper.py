@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 from datetime import date
+from typing import Optional
 
 from random import choices
 
@@ -32,14 +33,16 @@ def table_structure(table:str)->dict:
                 "confidence_high": int,
                 "model_used": str
             }
-        case "inventory":
+        case "inventory_log":
             target = {
                 "log_id": str,
                 "product_id": str,
-                "log_date": str,
-                "quantity_in": int,
+                "log_date": date,
+                "quantity_change": int,
                 "stock_level": int,
-                "warehouse": str
+                "warehouse": str,
+                "change_type": str,
+                "reference_id": str
             }
         case "sales":
             target = {
@@ -59,6 +62,8 @@ def table_structure(table:str)->dict:
                 "stock_level": int,
                 "is_stockout": bool
             }
+        case _: # default case
+            raise ValueError(f"Unknown table name: {table}")
         
     return target
 
@@ -105,3 +110,7 @@ def create_sale_id():
     id = ''.join(choices('0123456789', k=12))
         
     return current_date + id 
+
+def create_invlog_id():
+    id = ''.join(choices('0123456789', k=17))
+    return "INV" + id
