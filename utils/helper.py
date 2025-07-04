@@ -42,7 +42,7 @@ def table_structure(table:str)->dict:
                 "stock_level": int,
                 "warehouse": str,
                 "change_type": str,
-                "reference_id": str
+                "reference_id": (str, type(None))
             }
         case "sales":
             target = {
@@ -68,21 +68,18 @@ def table_structure(table:str)->dict:
     return target
 
 def is_valid_schema_input(attempt:dict, table:str):
-
-    target = table_structure(table) # get the schema structure
+    target = table_structure(table)
     
-    if len(attempt) != len(target): # check they have the same length
+    if len(attempt) != len(target):
         return False
-    
-    if sorted(target.keys()) != sorted(attempt.keys()): # check they have the same keys
+    if sorted(target.keys()) != sorted(attempt.keys()):
         return False
-    
     for key in target:
-        instance  = target[key]
-        if not (type(attempt[key]) is instance): # check valid data types
+        expected_type  = target[key]
+        if not isinstance(attempt[key], expected_type):
             return False
         
-    return True # return true if every check passes
+    return True # every check passes
 
 # ___________________________________________________________________ #
 
