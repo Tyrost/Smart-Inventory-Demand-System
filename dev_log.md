@@ -1,5 +1,114 @@
+Most people throw data at an ML model and pray
 
-# Dev Log
+# Smart-Inventory-Demand-System Dev Log
+
+## Overview
+
+SmartInventory AI is a cloud-deployable platform that predicts upcoming trends and demand spikes across content categories — just like forecasting which pins, tags, or product types users will engage with next week or next month.
+
+It helps content teams, ad managers, or algorithm engineers prepare inventory or promotion strategies ahead of time.
+
+## June 14th
+
+I figured I should’ve written this earlier but better late than never. This entry is meant to explain the groundwork before things started getting interesting.
+
+I’ve been thinking a lot about inventory systems and what makes them smart. I don't just mean storing static data, and keeping count of certain items, but also predicting and analyzing why anyone would need something based on trends and patterns adjusting to human randomness. I realized there’s not really much public inventory-to-sales data available (unless you’re scraping something sketchy or working for a retailer). So instead of pausing everything, I just made up the data generation layer myself. The trick is: if you model the logic right, you don’t need real data, you need realistic data.
+
+That’s where the project started. It’s a **demand forecasting simulation** that mimics what a real company might do if they had access to product reviews, ratings, and some internal cost/unit pricing info.
+
+The following is the tech stack I will use
+
+
+**Backend:**
+Python + SQLAlchemy --- Python because of data-working frameworks. SQLAlchemy because I want flexibility without ORM hell.
+**Database**
+MySQL since I want something production-realistic and not just SQLite.
+**API/Data Gathering**
+SerpApi --- Great web scraping API so that I don't have to scrape pages myself manually, that could be a pain. Not time efficient. This will help me get started with gathering basic products from Amazon, Google, Ebay, Pinterest, etc..
+**Data Storage:**
+Pandas (in-memory) for ast manipulation. Easier to debug and table export for logs. Can easily convert dictionaries/JSONs back and forth for easier data ingestion and DB submission.
+
+Started with something like this:
+```
+[ External API ]
+        ↓
+[ Raw Extractor Module ]
+        ↓
+[ DataCleaner / Formatter ]
+        ↓
+[ Product Object Model ]
+        ↓
+[ Category Tracker + Allocation Engine ]
+        ↓
+[ MySQL Upload via ORM ]
+```
+
+This was the baseline of what I thought of. It turned out to be a bit more complex than what I initially thought. I wanted to 
+make the the made-up data as realistic as possible, taking into account different factors which I will discuss in the following
+logs.
+
+## June 15th, 11AM
+Diving deeper into the idea of ORMs...
+I’m using **SQLAlchemy** as the ORM. Could I have gone full raw SQL? Yeah, but I wanted something scalable, readable, and easy to inspect mid execution especially since this is basically an evolving sandbox where logic changes weekly. I will get better at raw SQL scripting in the future, I promise. After all I'm a Data Scientist so it's kind of a must :)
+
+I initialized a `Connection` class that will serve as the parent class for our database ORM execution queries.
+The basic setup is the following:
+
+```py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+class Connection:
+    ...
+
+DATABASE_URL = f"mysql+pymysql://{self._user}:{self.__password}@{self.host}/{self.database}"
+
+self.engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+self.session = SessionLocal()
+```
+
+`create_engine()` can be thought of being the direct bridge to MySQL using the pymysql driver. An engine can be thought
+of as a factory that takes change of creating a `session` which in turn dictates the "commands" the database for different queries.
+
+Next, I defined the schema and general structure of how data injection should be handled from MySQLWorkbench itself, but it's essential to note that our ORM (in-code base) still doesn't know this has happened. It has no idea how the database schema looks like. Hence, we must define it by creating something is a model that represents the database table as an in-python object.
+
+A model is defined like...
+
+```py
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, VARCHAR, DATE, INTEGER, DECIMAL, BOOLEAN # all SQL data types
+
+Base = declarative_base()
+
+class MyTableName(Base)
+    __tablename__ = "MyTableName"
+    id = Column(VARCHAR(20), primary_key=True)
+    name = Column(VARCHAR(100))
+    has_pets = Column(BOOLEAN())
+```
+The schema placed within your models **must** be the the same as in the workbench. Otherwise there will be problems (most likely, I'm not taking chances).
+The `declarative_base` function creates an instance that contains all attributes needed to tie your SQL Tables with your modeled classes. All these models are subclasses of this base as a way to tie them all together for the same database.
+
+I made sure to add schema validator layers. Every time I parse an incoming product (whether from API, JSON, or dummy data), this function runs before the data gets committed. This has saved me from a ton of headaches, especially when doing randomized mock data. Something like:
+```py
+match(table):
+    case "table1":
+        target = {
+            "product_id": str,
+            "unit_price": float,
+            "cost": float,
+        }
+    case "table2":
+        target = {...}
+...
+for key in target:
+    expected_type  = target[key]
+    if not isinstance(attempt[key], expected_type):
+        return False
+```
+
+One of the main design decisions I made early on is not hiding logic inside functions if you’re gonna need to explain it to your future self. That’s why most of the major data ops (like cleaning, rating, and allocation) I will wrap inside OOP classes.
 
 ## June 19th, 10AM
 
@@ -22,41 +131,7 @@ I made a bunch of print statements to fully understand what was happening. To be
  'product_id': 'US25061900018',
  'product_name': 'Ophanie Area Rugs',
  'unit_price': 9.99},
-{'category': 'Rug',
- 'cost': 49.54,
- 'product_id': 'US25061900019',
- 'product_name': 'Washable Rugs 8x10',
- 'unit_price': 84.99},
-{'category': 'Rug',
- 'cost': 6.21,
- 'product_id': 'US25061900020',
- 'product_name': 'FinRèc Soft Black',
- 'unit_price': 13.99},
-{'category': 'Rug',
- 'cost': 195.44,
- 'product_id': 'US25061900021',
- 'product_name': 'nuLOOM 10x14 Rigo',
- 'unit_price': 339.76},
-{'category': 'Rug',
- 'cost': 17.72,
- 'product_id': 'US25061900022',
- 'product_name': 'nuLOOM 2\'8" x',
- 'unit_price': 44.49},
-{'category': 'Rug',
- 'cost': 27.28,
- 'product_id': 'US25061900023',
- 'product_name': 'Loloi Magnolia Home',
- 'unit_price': 47.03},
-{'category': 'Rug',
- 'cost': 18.34,
- 'product_id': 'US25061900024',
- 'product_name': 'Unique Loom Outdoor',
- 'unit_price': 50.0},
-{'category': 'Rug',
- 'cost': 20.48,
- 'product_id': 'US25061900025',
- 'product_name': 'Large Shag Area',
- 'unit_price': 45.99},
+...
 {'category': 'Rug',
  'cost': 44.87,
  'product_id': 'US25061900026',
@@ -226,8 +301,88 @@ The end result for two products:
 At the end, we never had to weird things with asin addition or name search within the data frame. Thanks dad.
 Next steps, we will add this data onto the `stock` table in MySQL with all other required fields.
 
+## June 21st, 6PM
 
+Today I built something I’m really proud of. It’s a complete restock mapping system. Like, an actual inventory analysis engine that detects patterns from logs and **recommends how much stock to allocate** across products. Not guessing, no hardcoded values, all backed by realistic logs and probabilities.
 
+This is the first time the system takes in actual trends from sale logs (`inventory_log` table), finds which products have been moving the most (or the least), and makes restock decisions accordingly. Let me break down how it works, because it’s actually a multi-step pipeline.
 
+```
+    ┌──────────────────────────┐
+    │  Sales Logs from ORM     │ ← filter: {"change_type": "sale"}
+    └────────────┬─────────────┘
+                 ↓
+       [ thread_restock(data) ]
+                 ↓
+    1. Group logs by product_id
+    2. Sum quantity sold
+    3. Reconstruct original stock
+    4. Calculate sale rates
+    5. Derive restock size
+    6. Handle NaNs w/ fairness logic
+    7. Normalize allocation via two metrics:
+       - popularity (based on sale count)
+       - speed (rate of stock movement)
+    8. Average both methods into `adjusted_allocation`
+    9. Format final data for ORM upload
+```
+Thanks ChatGPT for the amazing diagram :)
 
+I think I did a good job explaining the reasoning behind the decisions I made regarding the reallocation by taking into account human randomness and out-of-stock products. But the following reason that can be found in the code: `/data/sales/inv_management.py` is the following:
 
+```text
+We will observe the rate of change in which items are being sold.
+If there are a lot of items being sold in shorter X periods of time, 
+then we will prioritize allocating more stock onto that product.
+
+From here we want to implement an algorithm that takes into account demand, as well as the urgency of having close to no stock left for an aggregate product.
+Select a total number of allocations for this iteration based on total "popularity" of our products, by taking the same approach as our sales simulations when choosing how many products will be sold for that iteration. We will choose to restock 80% to 120% of what was sold for that iteration based on a random value between these two.
+For products that had no sales as a result of having 0 stock initially, there is not really a great way to know the products popularity. It could very well be that the product was greatly successful or the opposite, that it may be unpopular. That's outside of our current scope, so we "promise" to allocate an arbitrary number of stock into it.
+```
+
+First, I calculate how much stock to restock for the entire batch. I group everything by product ID and track two things:
+`quantity_change`: how much was sold (represented as negative values)
+`stock_level`: current stock left
+
+Then I reconstruct the original stock (before sales) and calculate how fast each product was selling.
+```py
+trends["original_stock"] = trends["stock_level"] + abs(trends["quantity_change"])
+trends["rates"] = abs(trends["quantity_change"]) / trends["original_stock"]
+```
+The rates column acts like a speed indicator. The faster it's sold, the higher the demand signal.
+
+As it follows from the previously explained logic, for NaN sales we will build logic to fairly assign allocation to these products based on their proportion of the entire set.
+
+```py
+num_nans = trends["rates"].isna().sum()
+total_products = len(trends)
+nan_proportion = num_nans / total_products
+
+nan_total_allocation = round(quantity_to_restock * nan_proportion)
+```
+
+To bring the logically-based probability vector (Based on how often a product shows up (popularity)) and the rate-of-change probability vector (Based on how fast it’s being bought (urgency)), I took the average of these two as a way to merge them:
+
+```py
+trends["adjusted_allocation"] = (trends["cold_allocation"] + trends["rate_allocation"]) / 2
+```
+
+Finally I took the new computed restocking allocation computed and leveraged off of pandas to build my list of dictionaries that followed the correct schema to be sent to the database.
+```py
+dataframe["stock_level"] = dataframe["stock_level"] + dataframe["quantity_change"]
+dataframe["log_date"] = date.today()
+dataframe["warehouse"] = "United Warehouse Main, Washington, US"
+dataframe["change_type"] = "restock"
+dataframe["log_id"] = [create_invlog_id() for i in range(len(dataframe))]
+dataframe["reference_id"] = None
+
+prepared_data = dataframe.to_dict(orient="records")
+for data in prepared_data:
+    status = database.create_item(data)
+    if status != 200:
+        raise Exception(f"An error occurred when uploading `inventory_log` data. Code: {status}")
+```
+Note to self: Please implement database submission as a batch instead of individual commits :)
+
+*Up next* is the big deal and primary focus of the project: Forecast and enhance my ML skills to make this system come to light.
+After that comes some cloud service stuff (aka AWS Lambda, AWS RDS), which I pray will have minimal prices or free tiers for small datasets and semi-small computation intervals.

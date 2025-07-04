@@ -87,7 +87,6 @@ class Commander(Connection):
         try:
             if not is_valid_schema_input(elements, self.table_name):
                 return 406 # if invalid schema passed for this table object...
-            
             new_item = self.cmd(**elements)
             self.session.add(new_item)
             self.session.commit()
