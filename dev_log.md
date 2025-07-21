@@ -386,3 +386,32 @@ Note to self: Please implement database submission as a batch instead of individ
 
 *Up next* is the big deal and primary focus of the project: Forecast and enhance my ML skills to make this system come to light.
 After that comes some cloud service stuff (aka AWS Lambda, AWS RDS), which I pray will have minimal prices or free tiers for small datasets and semi-small computation intervals.
+
+## July 20th, 7PM
+
+Okay, I got busy with work. But we are back to it.
+
+Today was the time when all the systems were finally places together concurrently into one.
+After adding some doc strings to fully captivate the functionalities of each of the systems,
+we ran the script and it worked first time.
+
+```bash
+2025-07-20 19:19:35,775 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
+2025-07-20 19:19:39,681 [INFO] root: Processing data batch (10 records): Table
+2025-07-20 19:19:41,580 [INFO] root: Processing data batch (10 records): Broom
+2025-07-20 19:19:44,157 [INFO] root: Processing data batch (10 records): Toothbrush
+2025-07-20 19:19:47,129 [INFO] root: Processing data batch (10 records): Folder
+2025-07-20 19:19:49,736 [INFO] root: Processing data batch (10 records): WaterBottle
+2025-07-20 19:19:49,769 [INFO] root: Product creation and allocation complete.
+
+2025-07-20 19:19:49,769 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
+2025-07-20 19:19:50,297 [INFO] root: Sale simulation successful. Moving on.
+
+2025-07-20 19:19:50,297 [INFO] root: 3/3 Threading `inventory_log` restock process...
+2025-07-20 19:19:50,310 [INFO] root: Process complete.
+
+2025-07-20 19:19:50,310 [INFO] root: All processes were successful.
+```
+
+Now we finally have enough data to start creating our ML model for prognostication, statistics and metrics that 
+we will later turn into endpoints for real-life usage. I sense the ending is close...
