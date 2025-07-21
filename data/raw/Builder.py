@@ -5,6 +5,9 @@ from typing import List
 import logging as log
 import json
 import os
+import logging as log
+
+logger = log.getLogger(__name__)
 
 class Builder:
     '''

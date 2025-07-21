@@ -2,6 +2,9 @@ from datetime import date
 import random
 from data.raw.Builder import Builder
 import pandas as pd
+import logging as log
+
+logger = log.getLogger(__name__)
 
 class Clean(Builder):
     
@@ -13,12 +16,12 @@ class Clean(Builder):
         self.execute()
 
     @staticmethod
-    def create_id():
+    def create_id(date:date):
         '''
         The plan for ID creation was the following:
         ID: [CountryCode (2)][Date (YY/MM/DD)][AutoIncrement (5)]
         '''
-        raw_date = str(date.today())
+        raw_date = str(date)
         parsed_date = raw_date[2:].replace("-", "")
         
         with open("id.txt", "r+") as file:
@@ -69,12 +72,12 @@ class Clean(Builder):
     def get_dataframe(self):
         return self.clean_df
     
-    def get_clean(self):
+    def get_clean(self, date:date):
         result = []
         data = self.raw_data
-        
+        log.info(f"Processing data batch (10 records): {self.product}")
         for product in data:
-            ID = self.create_id()
+            ID = self.create_id(date)
             NAME = self.__get_name(product["title"])
             CATEGORY = self.product
             PRICE = float(product["price"].replace("$", "").replace(",", "")) # selling price. Clean the number first to match out db

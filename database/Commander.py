@@ -1,8 +1,10 @@
 
 from database.Connection import Connection
 from database.models import *
-from utils.helper import is_valid_schema_input, table_structure
+from utils.schema import is_valid_schema_input, table_structure
+from utils.threading import safe_first
 
+import time
 from sqlalchemy import select, distinct, func
 
 from typing import List, Union
@@ -14,6 +16,7 @@ logger = log.getLogger(__name__)
 class Commander(Connection):
     def __init__(self, table:str) -> None:
         super().__init__()
+        self.table_options = ["forecast", "inventory_log", "stock", "sales", "products"]
         self.table_name = table
 
         self.cmd = None
@@ -89,7 +92,15 @@ class Commander(Connection):
                 return 406 # if invalid schema passed for this table object...
             new_item = self.cmd(**elements)
             self.session.add(new_item)
+            start = time.time()
             self.session.commit()
+            elapsed = time.time() - start
+            
+            if elapsed > 5:
+                log.warn(f"Commit thread took too long. Re-attempting connection and skipping data commit batch:\n{elements}")
+                self.__init_session()
+                return 400
+
             return 200
         
         except Exception as error:
@@ -141,15 +152,23 @@ class Commander(Connection):
             if not (self.__is_valid_attribute(attribute)): # validate passed attribute
                 return None
             
-            item = self.session.query(self.cmd).filter_by(**id_type).first()
-            if item:
-                setattr(item, attribute, new_value)
-                self.session.commit()
+            item = safe_first(self.session, self.cmd, id_type)
+            if item is None:
+                log.info("Skipping update due to timeout")
+                return
+            # if item:
+            #     setattr(item, attribute, new_value)
+            #     self.session.commit()
             return item 
         except Exception as error:
             log.error(f"There was an error: {error}")
     
     # ____________________ Misc ____________________ # 
+    
+    def delete_data(self):
+        self.session.query(self.cmd).delete()
+        self.session.commit()
+        return
      
     def get_unique(self, unique_val):
         try:

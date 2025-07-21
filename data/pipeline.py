@@ -8,5 +8,4 @@ def upload(data:List[dict], table_name, database)->None:
         status = database.create_item(data[index])
         if status != 200:
             raise ConnectionError(f"An error to SQL database ocurred when uploading `{table_name}` data. Booted error: {status}")
-    print(f"Upload {table_name} data successful")
     return 

@@ -5,8 +5,11 @@ from data.stock.Allocate import Allocate
 from random import randint
 from datetime import date
 
-from utils.helper import create_status_id
+import logging as log
+from utils.misc import create_status_id
 from data.pipeline import upload
+
+logger = log.getLogger(__name__)
 
 def allocate(products:list, allocation_engine:Allocate):
     total = randint(300, 2500) # choose from a pool of up to 2500 items per category
@@ -22,7 +25,7 @@ def allocate(products:list, allocation_engine:Allocate):
 
     return allocations
 
-def parse_allocations(allocations:dict, IDs:list):
+def parse_allocations(date:date, allocations:dict, IDs:list):
     '''
     preparation for database intake.
     Takes the IDs of the products and matches them accordingly 
@@ -32,9 +35,9 @@ def parse_allocations(allocations:dict, IDs:list):
     
     length = len(allocations) # should always be 10
     
-    status_ids = [create_status_id() for i in range(length)]
+    status_ids = [create_status_id(date) for i in range(length)]
     product_ids = IDs
-    status_date = date.today()
+    status_date = date
     stock_level = list(allocations.values())
     is_stockout = [True if value == 0 else False for value in stock_level]
     
@@ -50,35 +53,21 @@ def parse_allocations(allocations:dict, IDs:list):
     
     return parsed_data
 
-def map_allocations(num_categories:int, database_engine:Commander)->dict:
+def map_allocations(date:date, num_categories:int, database_engine:Commander):
     '''
-    Don't mind the brain dump :) 
-    There are exactly 10 different products for every unique category. Hence we will choose a fitting range
-    that will be divided upon these 10 different products for each category. Let said range be 100 - 500
-    Then for each aggregate category stock we will choose a random number to assign to each of the 10 products
-    
-    The lower and upper bounds will be a computation of the popularity and rating for that product. This data we don't
-    have in the cleansed dataset, but we can find these metrics in the raw datasets gotten from our API 
-    
-    Let the bottom bound be -> (standardized review-to-rating unit / 100) * (range * 0.10)
-    Let the upper bound be -> (standardized review-to-rating unit / 100) * (range * 0.80)
-    then:
-    x = randint(lower, upper)
-    range = range - x
-    
-    and do this again for 10 iterations. If there are any left over then discard these extra stock products
-    
-    We will simulate how much stock we have for each product
-    For every product type, we will get a random stock number.
-    
-    ^^^ Obsolete ^^^
+    This represents the main executing function that populates the `products` and `stock` tables.
+    Concurrently initializes the gathering and cleaning of API product gathering for our analysis.
+    We gather 10 products from `x` categories `num_categories` number of times.
+    For each product, we do automated matching to allocate products determined by the ratings and reviews
+    each received as a way to quantify product popularity.
     '''
+    log.info("1/3 Processing `product` and `allocation`. Now populating...")
     
     for i in range(num_categories): # 10 product API calls
         
         builder = Clean()
         
-        products = builder.get_clean() # for upload
+        products = builder.get_clean(date) # for upload
         raw_data = builder.get_raw()
         rating = Allocate(raw_data)
         
@@ -89,11 +78,11 @@ def map_allocations(num_categories:int, database_engine:Commander)->dict:
         product_ids:list = builder.get_dataframe()["product_id"] # get the id vector of our clean dataframe
         allocations = allocate(products, rating) # initialize allocation division algorithm
         
-        parsed_stock_data:list = parse_allocations(allocations, product_ids) # prepare stock data for upload
+        parsed_stock_data:list = parse_allocations(date, allocations, product_ids) # prepare stock data for upload
         
         # call to upload data onto database
         # it will already ensure schema validation
         upload(products, "products", database_engine)
         upload(parsed_stock_data, "stock", database_engine)
-    
+    log.info("Product creation and allocation complete.")
     return

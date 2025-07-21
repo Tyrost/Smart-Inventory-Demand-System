@@ -1,12 +1,5 @@
-import os
-import shutil
-import uuid
+
 from datetime import date
-from typing import Optional
-
-from random import choices
-
-# ________________________ Data Base ________________________ #
 
 def table_structure(table:str)->dict:
     '''
@@ -80,34 +73,3 @@ def is_valid_schema_input(attempt:dict, table:str):
             return False
         
     return True # every check passes
-
-# ___________________________________________________________________ #
-
-def clean_pycache():
-    '''
-    Removes annoying __pycache__ files after every execution
-    '''
-    for dirpath, dirnames, _ in os.walk("."):
-        for dirname in dirnames:
-            if dirname == "__pycache__":
-                full_path = os.path.join(dirpath, dirname)
-                shutil.rmtree(full_path, ignore_errors=True)
-
-def create_status_id():
-    '''
-    For stock data usage
-    '''
-    base = str(uuid.uuid4())[:8] # make sure its adding up to 20 (for schema type maximum VARCHAR)
-    current_date = str(date.today())
-    
-    return current_date + "-" + base
-
-def create_sale_id():
-    current_date = str(date.today()).replace("-", "")
-    id = ''.join(choices('0123456789', k=12))
-        
-    return current_date + id 
-
-def create_invlog_id():
-    id = ''.join(choices('0123456789', k=17))
-    return "INV" + id
