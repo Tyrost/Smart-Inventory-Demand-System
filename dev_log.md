@@ -4,7 +4,7 @@ Most people throw data at an ML model and pray
 
 ## Overview
 
-SmartInventory AI is a cloud-deployable platform that predicts upcoming trends and demand spikes across content categories — just like forecasting which pins, tags, or product types users will engage with next week or next month.
+SmartInventory AI is a cloud-deployable platform that predicts upcoming trends and demand spikes across content categories just like forecasting which pins, tags, or product types users will engage with next week or next month.
 
 It helps content teams, ad managers, or algorithm engineers prepare inventory or promotion strategies ahead of time.
 
@@ -12,22 +12,22 @@ It helps content teams, ad managers, or algorithm engineers prepare inventory or
 
 I figured I should’ve written this earlier but better late than never. This entry is meant to explain the groundwork before things started getting interesting.
 
-I’ve been thinking a lot about inventory systems and what makes them smart. I don't just mean storing static data, and keeping count of certain items, but also predicting and analyzing why anyone would need something based on trends and patterns adjusting to human randomness. I realized there’s not really much public inventory-to-sales data available (unless you’re scraping something sketchy or working for a retailer). So instead of pausing everything, I just made up the data generation layer myself. The trick is: if you model the logic right, you don’t need real data, you need realistic data.
+I’ve been thinking a lot about inventory systems and what makes them smart. I don't just mean storing static data, and keeping count of certain items, but also predicting and analyzing why anyone would need a record based on trends and patterns adjusting to the human element of randomness. I realized there’s not really much public inventory-to-sales data available (unless you’re scraping something sketchy or working for a retailer). So instead of pausing everything, I just made up the data generation layer myself. The trick is: if you model the logic right, you don’t need real data, you need realistic data.
 
-That’s where the project started. It’s a **demand forecasting simulation** that mimics what a real company might do if they had access to product reviews, ratings, and some internal cost/unit pricing info.
+That’s where the project started. It’s a **demand forecasting simulation** that mimics what a real company might do if they had access to product reviews, ratings, and internal cost/unit pricing info.
 
 The following is the tech stack I will use
 
-
+```
 **Backend:**
-Python + SQLAlchemy --- Python because of data-working frameworks. SQLAlchemy because I want flexibility without ORM hell.
+Python + SQLAlchemy because python has great data-working frameworks. SQLAlchemy because I want flexibility without ORM hell.
 **Database**
 MySQL since I want something production-realistic and not just SQLite.
 **API/Data Gathering**
-SerpApi --- Great web scraping API so that I don't have to scrape pages myself manually, that could be a pain. Not time efficient. This will help me get started with gathering basic products from Amazon, Google, Ebay, Pinterest, etc..
+SerpApi is a great web scraping API so that I don't have to scrape pages myself. The scraping alone would be incredibly slow, not because of the technological aspect, but because you have to adapt to different HTML structures for data extraction. This is simply not time efficient nor relevant to the focus of this project. Instead, the API will help me get started with gathering basic products from Amazon, Google, Ebay, Pinterest, etc..
 **Data Storage:**
 Pandas (in-memory) for ast manipulation. Easier to debug and table export for logs. Can easily convert dictionaries/JSONs back and forth for easier data ingestion and DB submission.
-
+```
 Started with something like this:
 ```
 [ External API ]
@@ -36,7 +36,7 @@ Started with something like this:
         ↓
 [ DataCleaner / Formatter ]
         ↓
-[ Product Object Model ]
+[ ORM Object Model ]
         ↓
 [ Category Tracker + Allocation Engine ]
         ↓
@@ -44,12 +44,12 @@ Started with something like this:
 ```
 
 This was the baseline of what I thought of. It turned out to be a bit more complex than what I initially thought. I wanted to 
-make the the made-up data as realistic as possible, taking into account different factors which I will discuss in the following
+make the made-up data as realistic as possible. Taking into account different factors which I will discuss in the following
 logs.
 
 ## June 15th, 11AM
 Diving deeper into the idea of ORMs...
-I’m using **SQLAlchemy** as the ORM. Could I have gone full raw SQL? Yeah, but I wanted something scalable, readable, and easy to inspect mid execution especially since this is basically an evolving sandbox where logic changes weekly. I will get better at raw SQL scripting in the future, I promise. After all I'm a Data Scientist so it's kind of a must :)
+I’m using **SQLAlchemy** as the ORM. Could I have gone full raw SQL? Yeah, but I wanted something scalable, readable, and easy to inspect mid execution. Especially since this is basically an evolving sandbox where logic changes weekly. I will get better at raw SQL scripting in the future, I promise. After all I'm a Data Scientist so it's kind of a must :)
 
 I initialized a `Connection` class that will serve as the parent class for our database ORM execution queries.
 The basic setup is the following:
@@ -68,12 +68,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 self.session = SessionLocal()
 ```
 
-`create_engine()` can be thought of being the direct bridge to MySQL using the pymysql driver. An engine can be thought
-of as a factory that takes change of creating a `session` which in turn dictates the "commands" the database for different queries.
+`create_engine()` can be thought of the direct bridge to MySQL using the pymysql driver. An engine can be thought
+of a factory that is tasked with creating something called a `session` which in turn dictates and "commands" the database for different queries. If anything goes wrong, for example committing and submitting something to the DB, the `session` will likely be damaged, hence we must implement a handler for error and health checkers for this session, such that if an issue arises with it, we call for a new session creation via engine.
 
-Next, I defined the schema and general structure of how data injection should be handled from MySQLWorkbench itself, but it's essential to note that our ORM (in-code base) still doesn't know this has happened. It has no idea how the database schema looks like. Hence, we must define it by creating something is a model that represents the database table as an in-python object.
+Next, I defined the schema and general structure of how data injection should be handled from MySQLWorkbench itself. It is essential to note that our ORM (in-code base) still doesn't know this has happened. It has no idea how the database schema looks like. Hence, we must define it by creating something called a `model` that represents the database table as an in-python object.
 
-A model is defined like...
+A model is defined as...
 
 ```py
 from sqlalchemy.ext.declarative import declarative_base
@@ -90,7 +90,7 @@ class MyTableName(Base)
 The schema placed within your models **must** be the the same as in the workbench. Otherwise there will be problems (most likely, I'm not taking chances).
 The `declarative_base` function creates an instance that contains all attributes needed to tie your SQL Tables with your modeled classes. All these models are subclasses of this base as a way to tie them all together for the same database.
 
-I made sure to add schema validator layers. Every time I parse an incoming product (whether from API, JSON, or dummy data), this function runs before the data gets committed. This has saved me from a ton of headaches, especially when doing randomized mock data. Something like:
+I made sure to add schema validator layers. Every time I parse an incoming product (whether from API, JSON, or dummy data), this function runs before the data gets committed. This has saved me from a ton of headaches, especially when using randomized mock data.
 ```py
 match(table):
     case "table1":
@@ -108,13 +108,13 @@ for key in target:
         return False
 ```
 
-One of the main design decisions I made early on is not hiding logic inside functions if you’re gonna need to explain it to your future self. That’s why most of the major data ops (like cleaning, rating, and allocation) I will wrap inside OOP classes.
+One of the main design decisions I made early on is not hiding logic inside functions if you’re gonna need to explain it to your future self. That’s why most of the major data ops (like cleaning, rating, and allocation) I will wrap inside classes for easier readability and debugging.
 
 ## June 19th, 10AM
 
-After struggling and attempting complex code that concurrently runs the API data extraction, data cleansing, data storage, and data rating; I finally got it to work for the first iteration of the category chosen *rug*.
+After struggling and attempting complex code that concurrently runs the API data extraction, data cleansing, data storage, and data rating; I finally got it to work for the first iteration of a category chosen.
 
-Notice that for the sake of simplicity and testing I am using iterating over only one set of categories: rugs
+Notice that for the sake of simplicity and testing I am iterating over only one set of categories: rugs.
 
 I made a bunch of print statements to fully understand what was happening. To be honest, I was expecting to see many more bugs than there were. For the sake of understanding, the following is the printing logs for the data; as well as the comparison for every product's rating for each category:
 
@@ -159,7 +159,7 @@ Product names for category: Rug
 Total category stock: 263
 ```
 
-And for the next product iterations we will convert the raw extracted data into a big DataFrame; and from this data only included the key imformation for the `Rating` class that will look at the `title` otherwise know as the name of the product, the `rating` of that product and the count of `reviews` of it. To actually rate the product from raw data and the same product from clean data stored in the database I had to use a foreign key indicator to match and extract its respective `rating` and `reviews` that would be used for the main rating functionality. This foreign key will be represented as the name stored in the database; and while a string is not recommended to be used as a lookup key value I didn't want to store in the database the only other alternative, the `asin` that is only for amazon ID serializable products.
+And for the next product iterations we will convert the raw extracted data into a big DataFrame; and from this data only included the key imformation for the `Rating` class that will look at the `title` otherwise know as the name of the product, the `rating` of that product and the count of `reviews` of it. To actually rate the product from raw data and the same product from clean data stored in the database I had to use a foreign key indicator to match and extract its respective `rating` and `reviews` that would be used for the main rating functionality. This foreign key will be represented as the name stored in the database; and while a product name is not recommended to be used as a lookup key value (as opposed to an ID) I didn't want to store something like an `asin` that is purely for amazon ID serializable products and not dynamic to other markets like Facebook marketplace or Ebay.
 
 **I would like to note that there was no need for API recall for every iterations as I used inheritance to store this aggregate data into a parent attribute to be used by the `Rating` system and the `Clean`-ing of data system.**
 
@@ -215,15 +215,15 @@ At the end, the allocation looks the following (for one category):
 
 ## June 20th, 2PM
 
-Nevermind  I changed my mind of the system. Does it ever happen to you that you overcomplicate things for no reasoning without even realizing that you can do things a simpler way? That's what was happening to me during my workaround with all of the classes interconnecting with each other. I had an idea of an algorithm that at the end was less realistic in real-world practice as well as more complicated.
+Nevermind I changed my mind on the system. Does it ever happen to you that you overcomplicate things for no reasoning without even realizing that you can do things a simpler way? That's what was happening to me during my workaround with all of the classes interconnecting with each other. I had an idea of an algorithm that at the end was less realistic in real-world practice as well as more complex in-code.
 Thankfully, it so happens that I came to my dad's house for the week. He pulled out his powerful Excel spreadsheet and followed the idea that I had into a general normalization. The idea is the following:
 
-Having the product's `asin`, `rating` and `reviews` count, we can set an aggregate normalized unit for every row that can act as the relationship between the ratings and reviews that a product has. This is similar to what I was attempting to do previously. Instead of a ration rating:reviews we do the opposite: ratings x reviews. We will sum this normalized arbitrary unit to be used later on. This aggregate unit explains the total pool from the relationship that follows the logic: `The more people have bought the product, the more it is likely to have more need for stock. Wait, but also consider its rating! The more popular and highly rated it is, then the more the consumers will want it!` 
+Having the product's `name`, `rating` and `reviews` count, we can set an aggregate normalized unit for every row that can act as the relationship between the ratings and reviews that a product has. This is similar to what I was attempting to do previously. Instead of a ration of `rating:reviews` we do the opposite: `ratings x reviews`. We will sum this normalized arbitrary unit to be used later on. This aggregate unit explains the total pool from the relationship that follows the logic: `The more people have bought the product, the more likely it is to have more need for stock for that product. Additionally, considering the rating, the more popular and highly rated it is, the more the consumers will want it.` 
 
 We then use these output variables to divide the individual normalized unit by the aggregate pool; that for the column, should sum up to one, just like a probability vector, which is exactly what we want. 
 This probability vector explains the total percentage that we should take from our original inventory distribution, to come up with a raw floating point of the stock needed for that product.
 
-In a dataframe practice, it looks something like this (from actual logs):
+In dataframe practice, it looks something like this (from actual logs):
 
 Total products chosen: 2068 for category: Drill
 
@@ -242,7 +242,7 @@ Total products chosen: 2068 for category: Drill
 
 The `Cold Allocation` represents the raw floating point of what the stock product should *strictly* be (in other words, it sums up to our total set stock in this case 2068). But obviously you cannot have a fraction of the product. This leads to the next piece of this system.
 
-I stuck with the idea that to make this system even more realistic I would once choose random values received from the cold allocation vector, by extracting 20th lower percentile of the cold allocation as the `lower bound` as well as the top 80th percentile as the `upper bound`. From these two numbers, we round them down and up accordingly, so we set the range for a random integer within these two. The code looks the following way:
+I stuck with the idea that to make this system even more realistic I would once choose random values received from the cold allocation vector, by extracting 20th lower percentile of the cold allocation as the `lower bound` as well as the top 80th percentile as the `upper bound`. From these two numbers, we round them down or up accordingly, such that we set the range for a random integer within these two. The code looks the following way:
 
 ```py
 lower_bound:list = self.dataframe["cold_allocation"] * 0.20
@@ -257,7 +257,7 @@ for i in range(len(self.dataframe)):
     adjusted.append(adjusted_allocation)
 ```
 
-Which creates another vector: `Adjusted Allocation`, that represents the most realistic way to bring up a inventory stock for that product:
+Whose outputs create another vector: `Adjusted Allocation`, that represents the most realistic way to bring up a inventory stock for that product:
 
 | #  | Adjusted Allocation |
 |----|---------------------|
@@ -298,7 +298,7 @@ The end result for two products:
             ('DEWALT 20V MAX', 940)]}
 ```
 
-At the end, we never had to weird things with asin addition or name search within the data frame. Thanks dad.
+At the end, we never had unnecessary variables such as the previously discussed asin or name search within the data frame. Thanks dad.
 Next steps, we will add this data onto the `stock` table in MySQL with all other required fields.
 
 ## June 21st, 6PM
@@ -351,7 +351,7 @@ trends["rates"] = abs(trends["quantity_change"]) / trends["original_stock"]
 ```
 The rates column acts like a speed indicator. The faster it's sold, the higher the demand signal.
 
-As it follows from the previously explained logic, for NaN sales we will build logic to fairly assign allocation to these products based on their proportion of the entire set.
+As it follows from the previously explained logic, for NaN sales we will build logic to fairly assign allocation to these products based on their proportion of the entire set. In other words, gather a percentage based on how prominent NaN values are compared to the total record count sampled. Then use this percentage to "cut" this value from our `quantity_to_restock` and distribute the count evenly among the NaN values.
 
 ```py
 num_nans = trends["rates"].isna().sum()
@@ -389,7 +389,7 @@ After that comes some cloud service stuff (aka AWS Lambda, AWS RDS), which I pra
 
 ## July 20th, 7PM
 
-Okay, I got busy with work. But we are back to it.
+Okay, I got busy with work. But we are so back.
 
 Today was the time when all the systems were finally places together concurrently into one.
 After adding some doc strings to fully captivate the functionalities of each of the systems,
@@ -415,3 +415,5 @@ we ran the script and it worked first time.
 
 Now we finally have enough data to start creating our ML model for prognostication, statistics and metrics that 
 we will later turn into endpoints for real-life usage. I sense the ending is close...
+
+psd. I ran into issues. I will fix them before next update ;)
