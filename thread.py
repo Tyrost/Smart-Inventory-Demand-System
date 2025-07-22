@@ -3,25 +3,13 @@ from utils.misc import setup_logging, clean_pycache
 
 from datetime import date, timedelta
 from time import sleep
-from random import randint
+from random import randint, randrange
 import logging as log
 
 logger = log.getLogger(__name__)
 
-current_date = date(2020, 1, 1)
+current_date = date(2020, 1, 10)
 
-# def thread_simulation(simulation_days=30):
-#     '''
-#     NOT FOR PRODUCTION USE!! Computation-heavy!
-#     '''
-#     global current_date
-#     prob = randint(0, 1)
-#     setup_logging()
-#     if prob >= 0.95:
-#         execute(current_date, False, 1) 
-#     else:
-#         execute(current_date)
-#     current_date = current_date + timedelta(days=1)
 
 def thread_simulation(simulation_days=30):
     '''
@@ -33,17 +21,16 @@ def thread_simulation(simulation_days=30):
     current_date = date(2020, 1, 1) # Set this to be our initial time for the simulation.
     
     for day in range(simulation_days):
-        print("Resuming. Day Count:", day)
-        prob = randint(0, 1)
-        
-        if day == 0:
+        prob = randint(1, 100)
+
+        if day == 0: # initially we must get the first product category
             execute(current_date, False, 1)
         else:
-            execute(current_date, False, 1) if prob <= 0.90 else execute(current_date)
-            
+            # we will get a new product category only 10% of the times
+            execute(current_date, False, 1) if prob > 90 else execute(current_date)
+        
+        log.info(f"Iteration was successful. Day: {current_date}")
+        
         current_date = current_date + timedelta(days=1)
-        log.info("Sleeping three seconds.")
         sleep(3)
     return
-        
-thread_simulation(60)

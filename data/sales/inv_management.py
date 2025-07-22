@@ -190,6 +190,10 @@ def map_restock(date, database:Commander, subset=100)->None: # take sample of th
     database.checkout_table("inventory_log") # take the sample
     data = database.read_cols(filter={"change_type": "sale"}, limit=subset) # we will begin be observing a batch of inventory log sales
     
+    if not data:
+        log.info("No minimal data found for filter for sales. Skipping system process.")
+        return
+    
     dataframe = thread_restock(data)
     if dataframe is None:
         return
@@ -209,5 +213,5 @@ def map_restock(date, database:Commander, subset=100)->None: # take sample of th
         status = database.create_item(data)
         if status != 200:
             raise Exception(f"An error occurred when uploading `inventory_log` data. Code: {status}")
-    log.info("Process complete.")
+
     return

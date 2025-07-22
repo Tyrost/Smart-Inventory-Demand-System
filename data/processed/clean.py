@@ -74,7 +74,7 @@ class Clean(Builder):
     
     def get_clean(self, date:date):
         result = []
-        data = self.raw_data
+        data = self.get_raw_data()
         log.info(f"Processing data batch (10 records): {self.product}")
         for product in data:
             ID = self.create_id(date)

@@ -63,7 +63,9 @@ class Builder:
                 raise ConnectionError(f"There was an issue with the response. Status code: {response.status_code}")
             
             content = response.json()
+
             return content
+        
         except Exception as error:
             log.error(error)
     
@@ -91,7 +93,39 @@ class Builder:
         with open(f"data/raw/log/{self.product}_product.json", "w") as file:
             json.dump(data, file, indent=4)
             
+    def __handle_response(self, data:dict):
+        '''
+        Returns parsed results if data is validated and results exist. Otherwise we will not return a value.
+        '''
+        if data is None:
+            log.warn(f"API call failed completely for search: {self.product}. No data returned.")
+            return
+        
+        error = data.get("error")
+        if error:
+            log.warn(f"API returned error for search: {self.product}. Error: {error}")
+            return
+        
+        search_info = data.get("search_information", {})
+        organic_state = search_info.get("organic_results_state")
+        if organic_state == "Fully empty":
+            log.warn(f"No organic results available for search: {self.product}. State: {organic_state}")
+            return
+        
+        organic_results = data.get("organic_results")
+        
+        if organic_results is None:
+            log.warn(f"No organic_results key found for search: {self.product}")
+            return
 
+        # only get 10 products and skip the first 6 products as these are sponsored
+        data = organic_results[6:16]
+        
+        if not data or len(data) == 0:
+            log.warn(f"There was no query result for search: {self.product}. Error: {error}. No usable data after filtering for search.")
+            return
+    
+        return data
     # ______________________________________ Usage Methods ______________________________________ #
     
     def execute(self) -> None:
@@ -105,8 +139,13 @@ class Builder:
             }
 
             data_aggregate:dict = self.__call(params)
+            
+
             # WE CAN FURTHER ENHANCE THIS BY ACCEPTING RANDOM POOLS OF INDEXES (while keep 10 still) RATHER THAN HARD-CODED POSITIONS.
-            data:List[dict] = data_aggregate["organic_results"][6:16] # only get 10 products and skip the first 6 products as these are sponsored
+            data = self.__handle_response(data_aggregate)
+            
+            if data is None:
+                return 
             
             self.__handle_json(data)
             

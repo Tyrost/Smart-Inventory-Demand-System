@@ -10,7 +10,7 @@ from utils.misc import create_status_id
 from data.pipeline import upload
 
 logger = log.getLogger(__name__)
-
+ 
 def allocate(products:list, allocation_engine:Allocate):
     total = randint(300, 2500) # choose from a pool of up to 2500 items per category
     
@@ -67,12 +67,22 @@ def map_allocations(date:date, num_categories:int, database_engine:Commander):
         
         builder = Clean()
         
-        products = builder.get_clean(date) # for upload
         raw_data = builder.get_raw()
+        if raw_data is not None and len(raw_data) > 0:
+            try:
+                products = builder.get_clean(date)
+                raw_data = builder.get_raw()
+            except Exception as error:
+                log.error(f"Error processing products: {error}")
+                continue
+        else:
+            log.warn(f"Data has not been gathered from Builder's SerpAPI call. Skipping process...")
+            continue
+        
         rating = Allocate(raw_data)
         
         if not products:
-            print(f"No products listing found for iteration count: {i+1}. Continuing")
+            log.warn(f"No products listing found for iteration count: {i+1}. Continuing")
             continue
         
         product_ids:list = builder.get_dataframe()["product_id"] # get the id vector of our clean dataframe

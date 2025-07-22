@@ -90,17 +90,10 @@ class Commander(Connection):
         try:
             if not is_valid_schema_input(elements, self.table_name):
                 return 406 # if invalid schema passed for this table object...
+            
             new_item = self.cmd(**elements)
             self.session.add(new_item)
-            start = time.time()
             self.session.commit()
-            elapsed = time.time() - start
-            
-            if elapsed > 5:
-                log.warn(f"Commit thread took too long. Re-attempting connection and skipping data commit batch:\n{elements}")
-                self.__init_session()
-                return 400
-
             return 200
         
         except Exception as error:
@@ -139,7 +132,7 @@ class Commander(Connection):
                 return [record.__dict__.copy() for record in records]  # careful, includes _sa_instance_state
             else:
                 if not self.__is_valid_attribute(value):  # validate
-                    print("attribute was not valid")
+                    log.warn("attribute was not valid")
                     return []
             return [getattr(record, value) for record in records]
         except Exception as error:
