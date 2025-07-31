@@ -25,7 +25,7 @@ class InventoryLog(Base): # Fabricate your own
     __tablename__ = "inventory_log"
     log_id = Column(VARCHAR(20), primary_key=True, unique=True)
     product_id = Column(VARCHAR(20), nullable=False)
-    log_date = Column(DATE(), nullable=False)
+    date = Column(DATE(), nullable=False)
     quantity_change = Column(INTEGER(), nullable=False)
     stock_level = Column(INTEGER(), nullable=False)
     warehouse = Column(VARCHAR(50), nullable=False)
@@ -38,10 +38,12 @@ class Sale(Base): # Fabricate your own
     sale_id = Column(VARCHAR(20), primary_key=True, unique=True)
     customer_id = Column(VARCHAR(20), nullable=False)
     product_id = Column(VARCHAR(20), nullable=False)
-    sale_date = Column(DATE(), nullable=False)
+    date = Column(DATE(), nullable=False)
     quantity_sold = Column(INTEGER(), nullable=False)
     sale_price = Column(DECIMAL(10, 2), nullable=False)
     location = Column(VARCHAR(50), nullable=False)
+    refunded = Column(BOOLEAN(), nullable=False)
+    reason = Column(VARCHAR(40), nullable=True)
     
 class Stock(Base): # Fabricate your own
     __tablename__ = "stock"

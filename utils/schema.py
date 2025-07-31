@@ -30,7 +30,7 @@ def table_structure(table:str)->dict:
             target = {
                 "log_id": str,
                 "product_id": str,
-                "log_date": date,
+                "date": date,
                 "quantity_change": int,
                 "stock_level": int,
                 "warehouse": str,
@@ -41,7 +41,7 @@ def table_structure(table:str)->dict:
             target = {
                 "sale_id": str,
                 "product_id": str,
-                "sale_date": date,
+                "date": date,
                 "quantity_sold": int,
                 "sale_price": float,
                 "location": str,

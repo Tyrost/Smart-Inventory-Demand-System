@@ -387,7 +387,7 @@ Note to self: Please implement database submission as a batch instead of individ
 *Up next* is the big deal and primary focus of the project: Forecast and enhance my ML skills to make this system come to light.
 After that comes some cloud service stuff (aka AWS Lambda, AWS RDS), which I pray will have minimal prices or free tiers for small datasets and semi-small computation intervals.
 
-## July 20th, 7PM
+## July 21st, 7PM
 
 Okay, I got busy with work. But we are so back.
 
@@ -395,28 +395,40 @@ Today was the time when all the systems were finally places together concurrentl
 After adding some doc strings to fully captivate the functionalities of each of the systems,
 we ran the script and it worked first time.
 
-```bash
-2025-07-20 19:19:35,775 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
-2025-07-20 19:19:39,681 [INFO] root: Processing data batch (10 records): Table
-2025-07-20 19:19:41,580 [INFO] root: Processing data batch (10 records): Broom
-2025-07-20 19:19:44,157 [INFO] root: Processing data batch (10 records): Toothbrush
-2025-07-20 19:19:47,129 [INFO] root: Processing data batch (10 records): Folder
-2025-07-20 19:19:49,736 [INFO] root: Processing data batch (10 records): WaterBottle
-2025-07-20 19:19:49,769 [INFO] root: Product creation and allocation complete.
+Now the task will be to run this script for various iterations to have enough data to feed it into our model. The goal
+will be to have 2 months worth of data such that we can start creating our ML model for prognostication, statistics and metrics that we will later turn into endpoints for real-life usage.
 
-2025-07-20 19:19:49,769 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
-2025-07-20 19:19:50,297 [INFO] root: Sale simulation successful. Moving on.
+I was running into the issue there wasn't enough validation when the API would fetch a non-valid response. The issue that I was having was for the product category `Book`. Which is odd, but the output looked like this:
 
-2025-07-20 19:19:50,297 [INFO] root: 3/3 Threading `inventory_log` restock process...
-2025-07-20 19:19:50,310 [INFO] root: Process complete.
-
-2025-07-20 19:19:50,310 [INFO] root: All processes were successful.
+```py
+{   
+    '_parameters': {'engine': 'amazon', 'k': 'Book', 'amazon_domain': 'amazon.com', 'device': 'desktop'},
+    ...
+    'search_information': {'organic_results_state': 'Fully empty'}, 
+    'error': "Amazon hasn't returned any results for this query."
+}
 ```
 
-Now we finally have enough data to start creating our ML model for prognostication, statistics and metrics that 
-we will later turn into endpoints for real-life usage. I sense the ending is close...
+The reason why the first system was working for only one iteration was that the category -as the search parameter (k)- so happened to find results; so we have to validate the output so that if the category input was not valid we could skip that product as a whole. This way, our system works for the 60-time iteration (2 months).
 
-psd. I ran into issues. I will fix them before next update ;)
+Now, to actually create the the threading system that will run the script many times, we will have to keep track of the dates. Aditionally, since we dont want to introduce a new product category to our system for every iteration, I will only introduce a singular category only 10% of the times.
+
+```py
+def thread_simulation(simulation_days=30):
+    current_date = date(2020, 1, 1) # arbitrary start date
+    for day in range(simulation_days):
+        prob = randint(1, 100)
+        ...
+        execute(current_date, False, 1) if prob > 90 else execute(current_date)
+
+        current_date = current_date + timedelta(days=1)
+        sleep(3)
+    ...
+    return
+```
+Where the `execute()` function calls the three system processes at once.
+Notice that I also included a `sleep()` function for three seconds to avoid something like a 406.
+At the end, the logs look like this:
 
 ```bash
 2025-07-22 10:16:52,497 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
@@ -432,11 +444,6 @@ psd. I ran into issues. I will fix them before next update ;)
 2025-07-22 10:17:11,597 [INFO] root: Sale simulation successful. Moving on.
 2025-07-22 10:17:11,597 [INFO] root: 3/3 Threading `inventory_log` restock process...
 2025-07-22 10:17:11,648 [INFO] root: Iteration was successful. Day: 2020-01-05
-2025-07-22 10:17:14,654 [INFO] root: 1/3 API product gathering process has been skipped. Continuing with simulation...
-2025-07-22 10:17:14,654 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
-2025-07-22 10:17:14,829 [INFO] root: Sale simulation successful. Moving on.
-2025-07-22 10:17:14,829 [INFO] root: 3/3 Threading `inventory_log` restock process...
-2025-07-22 10:17:14,843 [INFO] root: Iteration was successful. Day: 2020-01-06
 ...
 2025-07-22 10:20:22,874 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
 2025-07-22 10:20:22,992 [INFO] root: Processing data batch (10 records): Shampoo
@@ -451,3 +458,8 @@ Unique product categories: ['Toaster', 'FirstAidKit', 'LightBulb', 'Drill', 'Cur
 
 Inventory log record count: 6909
 ```
+Now we have enough data to focus on the last part of the project.
+
+## July 22nd, 10AM
+
+ML stuff (will continue writing later...)

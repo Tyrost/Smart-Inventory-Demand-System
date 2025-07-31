@@ -7,6 +7,8 @@ import json
 import os
 import logging as log
 
+import config.config as config
+
 logger = log.getLogger(__name__)
 
 class Builder:
@@ -44,7 +46,7 @@ class Builder:
             "Soccer Ball",      "Baseball Glove",   "Tennis Racket",    "Bicycle",          "Helmet",
             "Flashlight",       "First Aid Kit",    "Fire Extinguisher","Smoke Detector",   "Door Mat",
             "Curtains",         "Rug",              "Mirror",           "Shelf",            "Storage Bin"
-        ]
+        ] if not config.PRODUCT_LISTING else config.PRODUCT_LISTING
 
         self.product = None
         self.raw_data = None # return value
@@ -117,9 +119,11 @@ class Builder:
         if organic_results is None:
             log.warn(f"No organic_results key found for search: {self.product}")
             return
-
-        # only get 10 products and skip the first 6 products as these are sponsored
-        data = organic_results[6:16]
+        try:
+            # only get 10 products and skip the first 6 products as these are sponsored
+            data = organic_results[6:16]
+        except IndexError:
+            return
         
         if not data or len(data) == 0:
             log.warn(f"There was no query result for search: {self.product}. Error: {error}. No usable data after filtering for search.")
@@ -139,7 +143,6 @@ class Builder:
             }
 
             data_aggregate:dict = self.__call(params)
-            
 
             # WE CAN FURTHER ENHANCE THIS BY ACCEPTING RANDOM POOLS OF INDEXES (while keep 10 still) RATHER THAN HARD-CODED POSITIONS.
             data = self.__handle_response(data_aggregate)
