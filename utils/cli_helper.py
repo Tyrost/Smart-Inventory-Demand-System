@@ -5,9 +5,6 @@ import logging as log
 
 logger = log.getLogger(__name__)
 
-def instructions()->None:
-    print("Not implemented")
-
 def update_config(args):
     if args.product_listing:
         config.PRODUCT_LISTING = args.product_listing.split(',')

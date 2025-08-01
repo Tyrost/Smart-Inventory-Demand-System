@@ -1,8 +1,16 @@
+'''
+Internal use only.
+Via CLI calling examples:
+
+python main.py --run-sim --product-listing p1,p2,p3 --start-date 2025-08-01 --days 30
+Compute metrics only (assuming simulation already ran):
+python main.py --compute-metrics
+python main.py --run-sim --compute-metrics --start-date 2025-08-01 --days 30
+'''
+
 from thread import thread_simulation
 from data.misc.thread import thread_metrics
-from ml.model import Model
-from data.misc.Metrics import Metrics
-from utils.cli_helper import instructions, update_config
+from utils.cli_helper import update_config
 from utils.misc import setup_logging
 
 import argparse
@@ -56,10 +64,6 @@ def main():
     args = generate_parser()
     update_config(args)
 
-    if args.help:
-        instructions()
-        return
-
     try:
         config.validate_config()
     except AssertionError as error:
@@ -71,16 +75,3 @@ def main():
 
     if args.get_metrics:
         thread_metrics(args.metric_operation)
-
-    
-'''
-python main.py --run-sim --product-listing p1,p2,p3 --start-date 2025-08-01 --days 30
-
-Compute metrics only (assuming simulation already ran):
-
-python main.py --compute-metrics
-
-Run both:
-
-python main.py --run-sim --compute-metrics --start-date 2025-08-01 --days 30
-'''

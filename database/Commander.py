@@ -128,7 +128,7 @@ class Commander(Connection):
             query = self.session.query(self.table)
             if filter:
                 query = query.filter_by(**filter)
-            if table_filter is not None:
+            if table_filter:
                 query = query.filter(and_(*table_filter))
                 
             records = query.all() if not limit else query.limit(limit).all()

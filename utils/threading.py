@@ -1,6 +1,4 @@
 from threading import Thread
-import time
-
 
 def timed_first(session, table, id_type, result):
     try:

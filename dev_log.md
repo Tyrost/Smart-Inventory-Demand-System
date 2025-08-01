@@ -462,4 +462,79 @@ Now we have enough data to focus on the last part of the project.
 
 ## July 22nd, 10AM
 
-ML stuff (will continue writing later...)
+I must be transparent. I've taken limited college courses on Data Science; but as I continue, I know I will improve in this regard. Many of the functionalities that I created involving AI were not what I was hoping for, but in the end I created a simple ML forecast that works. It may not be very accurate, but it is something. ChatGPT helped me a lot along this process. I did my best to attempt to understand every line of code, and to that I succeeded.
+
+Well then, to an explenation of the code.
+I began with the `Train` class which prepared our data's features for prognostication. I made various logistical modifications to my core infrastructure, which included the addition to a new type of filter. 
+
+```py
+if filter: # old version
+    query = query.filter_by(**filter)
+if table_filter: # new version
+    query = query.filter(and_(*table_filter))
+```
+
+which not takes an array of conditions to be met. Suppose we wanted to filter and return records which include certain attributes such as date. Then we would have to gather that table model's date attribute and filter it like so:
+```py
+my_database = Commander("table1")
+date_object = my_database.table.date # gather the instantiated object's date
+dog_type = my_database.table.type
+my_filter = [date_object > date(2025, 1, 1), date_object < date(2020, 1, 1), dog_type == "Dog", ...]
+
+data = my_database.read(filter_table=my_filter)
+```
+This type of filter will allow us to have better control over more complex data gathering.
+
+From this class, the main focus is to gather the data we want specifically. Since the point is to forecast the amount of stock we will need to allocate in the future month then operation on this class will include: Grouping sale data by product id, filtering data by window cutoff, gathering latest product's stock left, compute and describe data metrics, as well as proper validation and error handling.
+When this has been created we will ensure the output of the main executing function is consumed by our modeling class to split and train the data leveraging off of sklearn functions. I decided to go for the `Random Forest Regression` algorithm as of the recommendation of ChatGPT.
+
+## July 25th, 8PM
+
+To have more control over the overall simulation, I decided to give the user the option to configure global variables to passed among function parameters for metric ranges/bounds, variability, computation time and date ranging.
+
+When it comes time to modify these parameters by a user –that may not understand the core program– the logic, datatype, context and usage are all account for when error may come up. I created unittest-like guardian-coded functions that protect the program around these potentially illogical parameters via assertion:
+
+```py
+# definitions
+PRODUCT_RESTOCK_LOWER_PROPORTION:float = None
+PRODUCT_RESTOCK_UPPER_PROPORTION:float = None
+...
+ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND:int = None
+ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND:int = None
+ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND:int = None
+...
+
+def validate_config()->None:
+    test = True
+    if (PRODUCT_RESTOCK_LOWER_PROPORTION and PRODUCT_RESTOCK_UPPER_PROPORTION) or PRODUCT_RESTOCK_UNIFORM_PROPORTION:
+    test = test and not (
+        PRODUCT_RESTOCK_LOWER_PROPORTION < PRODUCT_RESTOCK_UPPER_PROPORTION and
+        not (PRODUCT_RESTOCK_LOWER_PROPORTION and PRODUCT_RESTOCK_UPPER_PROPORTION and PRODUCT_RESTOCK_UNIFORM_PROPORTION) and 
+        (not (PRODUCT_RESTOCK_LOWER_PROPORTION + PRODUCT_RESTOCK_UPPER_PROPORTION == 1) or
+        PRODUCT_RESTOCK_UNIFORM_PROPORTION <= 1) and
+        (isinstance(PRODUCT_RESTOCK_LOWER_PROPORTION, float) and isinstance(PRODUCT_RESTOCK_UPPER_PROPORTION, float)) or isinstance(PRODUCT_RESTOCK_UNIFORM_PROPORTION, float)
+    )
+    ...
+    if SIMULATION_STARTING_DATE:
+        test = test and isinstance(SIMULATION_STARTING_DATE, date)
+    ...
+    assert(test)
+```
+These variables are directly exported to the location of the respective context and used by integration to the simulation. If a global configuration variable is not defined then there will always exists some default value to take it's place:
+```py
+if config.SALE_SIMULATION_PROPORTION_LOWER_BOUND and config.SALE_SIMULATION_PROPORTION_UPPER_BOUND:
+    lower = config.SALE_SIMULATION_PROPORTION_LOWER_BOUND
+    upper = config.SALE_SIMULATION_PROPORTION_UPPER_BOUND
+    assert(lower < upper and (lower + upper) < 1)
+else:
+    lower = 0.05
+    upper = 0.30
+```
+
+## July 31st, 9PM
+
+I started working on the two options to running this program: CLI & AWS Lambda.
+The CLI will be primarily used as an internal tool for testing purposes, while Lambda will be used for production use.
+
+The CLI utilizes various flags for their respective configuration-setting as discussed in the previous log, pretty straight forward tool.
+

@@ -43,7 +43,7 @@ ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND:int = None
 #  indicates that we will read all records from that date until present times.
 METRIC_DATE_CUTOFF:date = None
 
-def validate_config():
+def validate_config()->None:
     '''
     Validates all parameters.
     '''

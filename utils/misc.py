@@ -1,10 +1,11 @@
 import os
 import shutil
 import uuid
-from datetime import date
+from datetime import date, datetime
 import logging
 from random import choices
 from typing import List
+import config.config as config
 
 # ___________________________________________________________________ #
 
@@ -69,6 +70,25 @@ def upload(data:List[dict], table_name, database)->None:
         if status != 200:
             raise ConnectionError(f"An error to SQL database ocurred when uploading `{table_name}` data. Booted error: {status}")
     return 
+
+# ___________________________________________________________________ #
+
+def dict_to_config(configuration:dict):
+    hints = config.__annotations__ # Thank the lord for this dunder method
+    
+    for key, value in configuration.items():
+        data_type = hints[key]
+        
+        if hasattr(config, key): # case config global varibale exists
+            if data_type == date: # case: parse string to date
+                date_val = datetime.strptime(value, "%Y-%m-%d").date()
+                setattr(config, key, date_val)
+            else: # case int, str, float (supported by JSON)
+                setattr(config, key, value)
+        else:
+            return
+        
+# ___________________________________________________________________ #
 
 warehouses = [
     "Amazon Fulfillment Center, California, US",
