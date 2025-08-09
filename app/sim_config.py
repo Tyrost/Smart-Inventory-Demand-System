@@ -40,11 +40,8 @@ ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND:int = None
 ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND:int = None
 ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND:int = None
 
-# indicates that we will read all records from that date until present times.
+#  indicates that we will read all records from that date until present times.
 METRIC_DATE_CUTOFF:date = None
-
-CUTOFF_DATE_FORECAST:date = None
-HORIZON_DAYS_FORECAST:int = 0
 
 def validate_config()->None:
     '''
@@ -95,15 +92,5 @@ def validate_config()->None:
         
     if METRIC_DATE_CUTOFF:
         test = test and isinstance(METRIC_DATE_CUTOFF, date)
-        
-    if CUTOFF_DATE_FORECAST:
-        test = test and isinstance(CUTOFF_DATE_FORECAST, date)
-        if SIMULATION_STARTING_DATE:
-            test = test and CUTOFF_DATE_FORECAST >= SIMULATION_STARTING_DATE
-        
-    if HORIZON_DAYS_FORECAST:
-        test = test and isinstance(HORIZON_DAYS_FORECAST, int)
-        if SIMULATION_DAYS:
-            test = test and HORIZON_DAYS_FORECAST <= SIMULATION_DAYS
         
     assert(test)

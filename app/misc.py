@@ -5,7 +5,7 @@ from datetime import date, datetime
 import logging
 from random import choices
 from typing import List
-import config.config as config
+import sim_config as config
 
 # ___________________________________________________________________ #
 
@@ -90,7 +90,7 @@ def dict_to_config(configuration:dict):
         
 # ___________________________________________________________________ #
 
-warehouses = [
+WAREHOUSES = [
     "Amazon Fulfillment Center, California, US",
     "Walmart Distribution Center, Arkansas, US",
     "FedEx Supply Chain, Pennsylvania, US",

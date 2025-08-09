@@ -387,7 +387,7 @@ Note to self: Please implement database submission as a batch instead of individ
 *Up next* is the big deal and primary focus of the project: Forecast and enhance my ML skills to make this system come to light.
 After that comes some cloud service stuff (aka AWS Lambda, AWS RDS), which I pray will have minimal prices or free tiers for small datasets and semi-small computation intervals.
 
-## July 20th, 7PM
+## July 21st, 7PM
 
 Okay, I got busy with work. But we are so back.
 
@@ -395,25 +395,190 @@ Today was the time when all the systems were finally places together concurrentl
 After adding some doc strings to fully captivate the functionalities of each of the systems,
 we ran the script and it worked first time.
 
-```bash
-2025-07-20 19:19:35,775 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
-2025-07-20 19:19:39,681 [INFO] root: Processing data batch (10 records): Table
-2025-07-20 19:19:41,580 [INFO] root: Processing data batch (10 records): Broom
-2025-07-20 19:19:44,157 [INFO] root: Processing data batch (10 records): Toothbrush
-2025-07-20 19:19:47,129 [INFO] root: Processing data batch (10 records): Folder
-2025-07-20 19:19:49,736 [INFO] root: Processing data batch (10 records): WaterBottle
-2025-07-20 19:19:49,769 [INFO] root: Product creation and allocation complete.
+Now the task will be to run this script for various iterations to have enough data to feed it into our model. The goal
+will be to have 2 months worth of data such that we can start creating our ML model for prognostication, statistics and metrics that we will later turn into endpoints for real-life usage.
 
-2025-07-20 19:19:49,769 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
-2025-07-20 19:19:50,297 [INFO] root: Sale simulation successful. Moving on.
+I was running into the issue there wasn't enough validation when the API would fetch a non-valid response. The issue that I was having was for the product category `Book`. Which is odd, but the output looked like this:
 
-2025-07-20 19:19:50,297 [INFO] root: 3/3 Threading `inventory_log` restock process...
-2025-07-20 19:19:50,310 [INFO] root: Process complete.
-
-2025-07-20 19:19:50,310 [INFO] root: All processes were successful.
+```py
+{   
+    '_parameters': {'engine': 'amazon', 'k': 'Book', 'amazon_domain': 'amazon.com', 'device': 'desktop'},
+    ...
+    'search_information': {'organic_results_state': 'Fully empty'}, 
+    'error': "Amazon hasn't returned any results for this query."
+}
 ```
 
-Now we finally have enough data to start creating our ML model for prognostication, statistics and metrics that 
-we will later turn into endpoints for real-life usage. I sense the ending is close...
+The reason why the first system was working for only one iteration was that the category -as the search parameter (k)- so happened to find results; so we have to validate the output so that if the category input was not valid we could skip that product as a whole. This way, our system works for the 60-time iteration (2 months).
 
-psd. I ran into issues. I will fix them before next update ;)
+Now, to actually create the the threading system that will run the script many times, we will have to keep track of the dates. Aditionally, since we dont want to introduce a new product category to our system for every iteration, I will only introduce a singular category only 10% of the times.
+
+```py
+def thread_simulation(simulation_days=30):
+    current_date = date(2020, 1, 1) # arbitrary start date
+    for day in range(simulation_days):
+        prob = randint(1, 100)
+        ...
+        execute(current_date, False, 1) if prob > 90 else execute(current_date)
+
+        current_date = current_date + timedelta(days=1)
+        sleep(3)
+    ...
+    return
+```
+Where the `execute()` function calls the three system processes at once.
+Notice that I also included a `sleep()` function for three seconds to avoid something like a 406.
+At the end, the logs look like this:
+
+```bash
+2025-07-22 10:16:52,497 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
+2025-07-22 10:16:54,184 [INFO] root: Processing data batch (10 records): Toaster
+2025-07-22 10:16:54,254 [INFO] root: Product creation and allocation complete.
+2025-07-22 10:16:54,254 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
+2025-07-22 10:16:54,290 [INFO] root: Sale simulation successful. Moving on.
+2025-07-22 10:16:54,290 [INFO] root: 3/3 Threading `inventory_log` restock process...
+2025-07-22 10:16:54,303 [INFO] root: Iteration was successful. Day: 2020-01-01
+...
+2025-07-22 10:17:11,415 [INFO] root: 1/3 API product gathering process has been skipped. Continuing with simulation...
+2025-07-22 10:17:11,415 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
+2025-07-22 10:17:11,597 [INFO] root: Sale simulation successful. Moving on.
+2025-07-22 10:17:11,597 [INFO] root: 3/3 Threading `inventory_log` restock process...
+2025-07-22 10:17:11,648 [INFO] root: Iteration was successful. Day: 2020-01-05
+...
+2025-07-22 10:20:22,874 [INFO] root: 1/3 Processing `product` and `allocation`. Now populating...
+2025-07-22 10:20:22,992 [INFO] root: Processing data batch (10 records): Shampoo
+2025-07-22 10:20:23,025 [INFO] root: Product creation and allocation complete.
+2025-07-22 10:20:23,025 [INFO] root: 2/3 Processing `sales` and updating `inventory_log` accordingly...
+2025-07-22 10:20:23,191 [INFO] root: Sale simulation successful. Moving on.
+2025-07-22 10:20:23,191 [INFO] root: 3/3 Threading `inventory_log` restock process...
+2025-07-22 10:20:23,213 [INFO] root: Iteration was successful. Day: 2020-02-29
+
+Product record count: 100
+Unique product categories: ['Toaster', 'FirstAidKit', 'LightBulb', 'Drill', 'Curtains', 'Crayons', 'PaperShredder', 'Iron', 'JumpRope', 'Shampoo']
+
+Inventory log record count: 6909
+```
+Now we have enough data to focus on the last part of the project.
+
+## July 22nd, 10AM
+
+I must be transparent. I've taken limited college courses on Data Science; but as I continue, I know I will improve in this regard. Many of the functionalities that I created involving AI were not what I was hoping for, but in the end I created a simple ML forecast that works. It may not be very accurate, but it is something. ChatGPT helped me a lot along this process. I did my best to attempt to understand every line of code, and to that I succeeded.
+
+Well then, to an explenation of the code.
+I began with the `Train` class which prepared our data's features for prognostication. I made various logistical modifications to my core infrastructure, which included the addition to a new type of filter. 
+
+```py
+if filter: # old version
+    query = query.filter_by(**filter)
+if table_filter: # new version
+    query = query.filter(and_(*table_filter))
+```
+
+which not takes an array of conditions to be met. Suppose we wanted to filter and return records which include certain attributes such as date. Then we would have to gather that table model's date attribute and filter it like so:
+```py
+my_database = Commander("table1")
+date_object = my_database.table.date # gather the instantiated object's date
+dog_type = my_database.table.type
+my_filter = [date_object > date(2025, 1, 1), date_object < date(2020, 1, 1), dog_type == "Dog", ...]
+
+data = my_database.read(filter_table=my_filter)
+```
+This type of filter will allow us to have better control over more complex data gathering.
+
+From this class, the main focus is to gather the data we want specifically. Since the point is to forecast the amount of stock we will need to allocate in the future month then operation on this class will include: Grouping sale data by product id, filtering data by window cutoff, gathering latest product's stock left, compute and describe data metrics, as well as proper validation and error handling.
+When this has been created we will ensure the output of the main executing function is consumed by our modeling class to split and train the data leveraging off of sklearn functions. I decided to go for the `Random Forest Regression` algorithm as of the recommendation of ChatGPT.
+
+## July 25th, 8PM
+
+To have more control over the overall simulation, I decided to give the user the option to configure global variables to passed among function parameters for metric ranges/bounds, variability, computation time and date ranging.
+
+When it comes time to modify these parameters by a user –that may not understand the core program– the logic, datatype, context and usage are all account for when error may come up. I created unittest-like guardian-coded functions that protect the program around these potentially illogical parameters via assertion:
+
+```py
+# definitions
+PRODUCT_RESTOCK_LOWER_PROPORTION:float = None
+PRODUCT_RESTOCK_UPPER_PROPORTION:float = None
+...
+ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND:int = None
+ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND:int = None
+ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND:int = None
+...
+
+def validate_config()->None:
+    test = True
+    if (PRODUCT_RESTOCK_LOWER_PROPORTION and PRODUCT_RESTOCK_UPPER_PROPORTION) or PRODUCT_RESTOCK_UNIFORM_PROPORTION:
+    test = test and not (
+        PRODUCT_RESTOCK_LOWER_PROPORTION < PRODUCT_RESTOCK_UPPER_PROPORTION and
+        not (PRODUCT_RESTOCK_LOWER_PROPORTION and PRODUCT_RESTOCK_UPPER_PROPORTION and PRODUCT_RESTOCK_UNIFORM_PROPORTION) and 
+        (not (PRODUCT_RESTOCK_LOWER_PROPORTION + PRODUCT_RESTOCK_UPPER_PROPORTION == 1) or
+        PRODUCT_RESTOCK_UNIFORM_PROPORTION <= 1) and
+        (isinstance(PRODUCT_RESTOCK_LOWER_PROPORTION, float) and isinstance(PRODUCT_RESTOCK_UPPER_PROPORTION, float)) or isinstance(PRODUCT_RESTOCK_UNIFORM_PROPORTION, float)
+    )
+    ...
+    if SIMULATION_STARTING_DATE:
+        test = test and isinstance(SIMULATION_STARTING_DATE, date)
+    ...
+    assert(test)
+```
+These variables are directly exported to the location of the respective context and used by integration to the simulation. If a global configuration variable is not defined then there will always exists some default value to take it's place:
+```py
+if config.SALE_SIMULATION_PROPORTION_LOWER_BOUND and config.SALE_SIMULATION_PROPORTION_UPPER_BOUND:
+    lower = config.SALE_SIMULATION_PROPORTION_LOWER_BOUND
+    upper = config.SALE_SIMULATION_PROPORTION_UPPER_BOUND
+    assert(lower < upper and (lower + upper) < 1)
+else:
+    lower = 0.05
+    upper = 0.30
+```
+
+## July 31st, 9PM  
+
+I started working on the two options to running this program: CLI & AWS Lambda.  
+The CLI would be used primarily as an internal tool for testing purposes, giving me an easy way to configure parameters (through the previously created global configuration system) without having to get into the codebase each time. By passing flags directly into the CLI, I could adjust bounds, iteration sizes, and simulation dates quickly while ensuring the configuration validation layer caught any logical or datatype errors before they could break the program. This minimized the risk of small bugs in during testing.
+
+One issue I ran into during CLI testing was when two different configuration flags conflicted logically, causing the simulation to break mid-run. This happened because the **upper bound** for restocking was set lower than the **lower bound**, which was technically valid in code but not in logic. I fixed this by adding strict assertion checks in the validation function as a form of unit testing.
+
+From there, I began exploring AWS Lambda as the production runner. The idea was a serverless execution, no local dependencies, and the potential to trigger automatically in the cloud. I worked on adapting the program to Lambda’s constraints, even considering packaging dependencies in layers and adjusting the entry point for cloud execution. I created the standard lambda setup found in the `lambda` directory which calls the AWS SDK (boto3) that generates a function with the option to call the three different operations that we have worked on. Running the actual simulation, calling and generating metrics gathered from the simulation and the forecasting. We call the operation via lambda based on the standard `event` parameter that Lambda takes:
+
+```py
+function = event.get("function", "null")
+
+if function == "run":
+    response = ...
+elif function == "metric":
+    response = ...
+elif function == "forecast":
+    response = ...
+
+return {
+    "status": "success",
+    "response": response
+}
+```
+
+Now that we had created the actual lambda function we have to pack the runtime files into one builder directory inside of our app and remembering to fix the paths used for the modules. We also have to pass all the dependencies into this same directory for them to be installed when executed. The plan is the following:
+
+```
+[ Source Code + Dependencies ]
+↓
+[ Create Env & Install Requirements ]
+↓
+[ Package into Deployment Directory ]
+↓
+[ Zip Deployment Directory ]
+↓
+[ Upload to AWS Lambda Console ]
+```
+
+## August 2nd, 3PM
+
+As the implementation progressed, it became clear that the Lambda environment was introducing unnecessary complexity for this project’s scope. The dependency handling, execution limits, and lack of persistent local storage made it less practical than anticipated. After weighing the pros and cons, I decided Lambda was not the right fit here. After all, the purpose of the project was to mimic a real life simulation for me to apply statistical practices.
+
+I instead chose to keep execution local but make deployment and setup cleaner, which led to the final stage: containerization with Docker.  
+By creating a `Dockerfile` and `docker-compose.yml`, I could bundle the Python application, dependencies, and MySQL database into a single reproducible environment. The containerized approach also future proofs the application for deployment to any cloud service that supports Docker, should I decide to take it there later. 
+
+With Docker in place, the final product is portable, consistent, and ready to run without additional configuration to close this project.
+
+## August 9th, 1PM
+
+After many days of testing I configured some bugs with the implementation. For example I forgot some configuration variables here and there, added them and tested them. While the overall structure and kind of messy sometimes, I'm pretty confident that at the moment this has been my best work. This project took some time. There were days that I worked my job at talent questor while working on this project, until the day I quit. I took several experiences with me, and I continue to work from the work I've done. I have a clear idea for the future on how everything will work better. ChatGPT really pulled through on concepts I had not yet covered. I believe that the speed in which I've been able to learn has been incredible thanks to this amazing technology. I'm happy to know that I've used this tool responsibly as a companion rather than a do-it-all (vibe coding is just NOT for me). And I'm happy to say that this ambitious project has been completed.

@@ -1,4 +1,3 @@
-
 from datetime import date
 
 def table_structure(table:str)->dict:

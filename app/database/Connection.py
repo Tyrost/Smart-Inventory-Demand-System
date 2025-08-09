@@ -1,4 +1,4 @@
-from config.secret_load import get_secret
+from secret_load import get_secret
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -7,13 +7,17 @@ import logging as log
 logger = log.getLogger(__name__)
 
 class Connection:
+    '''
+    The purpose of this simulation will be to be ran locally. Hence we wont worry much about database hosting, therefore secrete/dynamic names
+    for host, database (name) and user wont be necessary. I will keep my password secret within my .env file.
+    '''
     
     def __init__(self) -> None:
         
-        self.host = "localhost"
-        self.database = "SIDS"
+        self.host = get_secret("DB_HOST")
+        self.database = get_secret("DB_NAME")
         
-        self._user = "danielcorzo"
+        self._user = get_secret("DB_USER")
         self.__password = get_secret("DB_PASSWORD")
         
         self.session = None

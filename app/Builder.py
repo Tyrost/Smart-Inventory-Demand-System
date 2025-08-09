@@ -1,4 +1,4 @@
-from config.secret_load import get_secret
+from secret_load import get_secret
 import requests
 import random
 from typing import List
@@ -7,7 +7,7 @@ import json
 import os
 import logging as log
 
-import config.config as config
+import sim_config as config
 
 logger = log.getLogger(__name__)
 

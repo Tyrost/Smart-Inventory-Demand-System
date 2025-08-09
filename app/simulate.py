@@ -1,11 +1,12 @@
 from database.Commander import Commander
-from utils.misc import create_sale_id, create_invlog_id
+from misc import create_sale_id, create_invlog_id
 
 import logging as log
 from random import randint, choices
 from typing import List
 from math import ceil, floor
 from datetime import date
+import sim_config as config
 
 logger = log.getLogger(__name__)
 
@@ -27,19 +28,36 @@ def simulate_sell(date:date, database_engine:Commander, data:List[dict], stock_t
             continue
         
         quantities = [1, 2, 3, 4, 5]
-        prob = [0.82, 0.10, 0.05, 0.02, 0.01] # set probabilities 
+        # set probabilities 
+        if config.QUANTITY_SELL_RATES:
+            assert(len(config.QUANTITY_SELL_RATES) == 5 and sum(config.QUANTITY_SELL_RATES) == 1)
+            prob = config.QUANTITY_SELL_RATES
+        else:
+            prob = [0.82, 0.10, 0.05, 0.02, 0.01]
         
         # set data
         sale_id = create_sale_id(date)
         product_id = product_row["product_id"]
         sale_date = date
         quantity_sold = choices(quantities, weights=prob, k=1)[0]
-        price = database_engine.read_cols("cost", filter={"product_id": product_id})[0]
+        price = database_engine.read("cost", filter={"product_id": product_id})[0]
         sale_price = round(price * quantity_sold, 2)
+        # simulates if an item has been refunded or not. We will set a 10% chance that it has by default.
+        if config.REFUND_RATE:
+            assert(sum(config.REFUND_RATE) == 1 and len(config.REFUND_RATE) == 2)
+            refunded = choices([True, False], weights=config.REFUND_RATE)
+        else:
+            refunded = choices([True, False], weights=[9, 1])
         
+        reason = None
+        if refunded:
+            reason = choices(["Defective or Damaged", "Incorrect Item", "Item Not as Described", 
+                              "Missing Parts or Accessories", "Poor Performance or Quality", "Changed Mind", 
+                              "Accidental Order", "Other"])
+            
         # CREATE NEW TABLE WITH RANDOM USER INFORMATION AND EXTRACT WITH FOREIGN KEY
         location = "Washington, US"
-        customer_id = "123"
+        customer_id = "123" # will leave this as it is. No need to make it more complex for our simulation.
         
         sale = {
             "sale_id": sale_id,
@@ -48,7 +66,9 @@ def simulate_sell(date:date, database_engine:Commander, data:List[dict], stock_t
             "quantity_sold": quantity_sold,
             "sale_price": float(sale_price),
             "location": location,
-            "customer_id": customer_id
+            "customer_id": customer_id,
+            "refunded": refunded,
+            "reason": reason
             }
         # create sale with data gathering upload
         database_engine.checkout_table("sales")
@@ -117,9 +137,18 @@ def map_sales(date:date, database_engine:Commander):
     # sum the total amount of stocks in the data selected
     stock_count = sum(row["stock_level"] for row in rows)
     
-    # we will simulate at least 30% sells and at most 5% sales of our total stock retrieved from random index gathering
-    lower_bound = floor(stock_count * 0.05)
-    upper_bound = ceil(stock_count * 0.30)
+    
+    # we will simulate on a proportion of our total stock retrieved from random index gathering (at least 30% sells and at most 5% sales by default)
+    if config.SALE_SIMULATION_PROPORTION_LOWER_BOUND and config.SALE_SIMULATION_PROPORTION_UPPER_BOUND:
+        lower = config.SALE_SIMULATION_PROPORTION_LOWER_BOUND
+        upper = config.SALE_SIMULATION_PROPORTION_UPPER_BOUND
+        assert(lower < upper and (lower + upper) < 1)
+    else:
+        lower = 0.05
+        upper = 0.30
+    
+    lower_bound = floor(stock_count * lower)
+    upper_bound = ceil(stock_count * upper)
     
     # the total items sold
     total_sold = randint(lower_bound, upper_bound)

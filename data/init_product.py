@@ -1,18 +1,38 @@
 from database.Commander import Commander
 from data.processed.Clean import Clean 
-from data.stock.Allocate import Allocate
+from data.Allocate import Allocate
 
 from random import randint
 from datetime import date
 
 import logging as log
 from utils.misc import create_status_id
-from data.pipeline import upload
+from utils.misc import upload
+
+import config.config as config
 
 logger = log.getLogger(__name__)
-
+ 
 def allocate(products:list, allocation_engine:Allocate):
-    total = randint(300, 2500) # choose from a pool of up to 2500 items per category
+    
+    #case manually chosen lower and upper bounds
+    if config.ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND and config.ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND:
+        lower =  config.ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND
+        upper = config.ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND
+        assert(lower < upper and upper)
+    # case, uniform constant value
+    elif not (config.ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND and config.ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND) and config.ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND:
+        lower = config.ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND
+        upper = config.ITERATION_PRODUCT_COUNT_ALLOCATION_UNIFORM_BOUND
+    # case, all lower, upper and uniform values are set (program misuse)
+    elif config.ITERATION_PRODUCT_COUNT_ALLOCATION_LOWER_BOUND and config.ITERATION_PRODUCT_COUNT_ALLOCATION_UPPER_BOUND and config.PRODUCT_RESTOCK_UNIFORM_PROPORTION:
+        raise SystemError("Proportions set for simulation are verbose. Indicate either lower/upper restock proportions or the uniform proportion; but not both.")
+    # default case
+    else:
+        lower = 300
+        upper = 2500    
+    
+    total = randint(lower, upper)
     
     allocations = {}
     dataframe = allocation_engine.allocate_adjusted(total)
@@ -53,7 +73,7 @@ def parse_allocations(date:date, allocations:dict, IDs:list):
     
     return parsed_data
 
-def map_allocations(date:date, num_categories:int, database_engine:Commander):
+def execute_gathering(date:date, num_categories:int, database_engine:Commander):
     '''
     This represents the main executing function that populates the `products` and `stock` tables.
     Concurrently initializes the gathering and cleaning of API product gathering for our analysis.
@@ -67,12 +87,22 @@ def map_allocations(date:date, num_categories:int, database_engine:Commander):
         
         builder = Clean()
         
-        products = builder.get_clean(date) # for upload
         raw_data = builder.get_raw()
+        if raw_data is not None and len(raw_data) > 0:
+            try:
+                products = builder.get_clean(date)
+                raw_data = builder.get_raw()
+            except Exception as error:
+                log.error(f"Error processing products: {error}")
+                continue
+        else:
+            log.warn(f"Data has not been gathered from Builder's SerpAPI call. Skipping process...")
+            continue
+        
         rating = Allocate(raw_data)
         
         if not products:
-            print(f"No products listing found for iteration count: {i+1}. Continuing")
+            log.warn(f"No products listing found for iteration count: {i+1}. Continuing")
             continue
         
         product_ids:list = builder.get_dataframe()["product_id"] # get the id vector of our clean dataframe

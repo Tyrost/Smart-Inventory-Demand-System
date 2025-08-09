@@ -1,6 +1,6 @@
 from datetime import date
 import random
-from data.raw.Builder import Builder
+from Builder import Builder
 import pandas as pd
 import logging as log
 

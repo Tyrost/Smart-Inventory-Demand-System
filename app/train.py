@@ -4,8 +4,6 @@ from datetime import timedelta
 
 import pandas as pd
 
-import config.config as config
-
 class Train:
     '''
     The class mainly prepares the aggregate data to predict `horizon_days` ahead of the current time.
@@ -13,15 +11,12 @@ class Train:
     model against to be able to predict the trend of how much stock is gonna be needed for a specific product.
     '''
     
-    def __init__(self) -> None:
+    def __init__(self, cutoff:date, horizon_days) -> None:
         
         self.database = Commander("sales")
         
-        # if there is not a cutoff date set then set the user set starting simulation date. 
-        # If that's not found either then use the default value of January 1st, 2020
-        self.cutoff = config.CUTOFF_DATE_FORECAST if config.CUTOFF_DATE_FORECAST else config.SIMULATION_STARTING_DATE if config.SIMULATION_STARTING_DATE else date(2020, 1, 1)
-        
-        self.horizon = config.HORIZON_DAYS_FORECAST if config.HORIZON_DAYS_FORECAST else 30 if 30 < config.SIMULATION_DAYS else None
+        self.cutoff = cutoff
+        self.horizon = horizon_days
         
     def __handle_look_window(self):
         '''

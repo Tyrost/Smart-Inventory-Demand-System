@@ -1,0 +1,43 @@
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: sim_db
+    env_file: .env
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - simnet
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sim_app
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    networks:
+      - simnet
+    stdin_open: true
+    tty: true
+
+networks:
+  simnet:
+
+volumes:
+  db_data:

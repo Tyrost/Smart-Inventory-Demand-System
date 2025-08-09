@@ -1,5 +1,5 @@
-from database.Connection import Connection
-from database.models import *
+from Connection import Connection
+from models import *
 from utils.schema import is_valid_schema_input, table_structure
 from utils.threading import safe_first
 

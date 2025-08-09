@@ -1,12 +1,14 @@
 from database.Commander import Commander
 import pandas as pd
 
-from random import randint
+from random import randint, choice
 from typing import List
 
-from utils.misc import create_invlog_id
-from datetime import date
+from misc import create_invlog_id
 import logging as log
+
+import sim_config as config
+from misc import WAREHOUSES
 
 logger = log.getLogger(__name__)
 
@@ -61,10 +63,19 @@ def thread_restock(data:List[dict])->pd.DataFrame:
         # we will instead merge the data over the product_id.
         trends = trends.groupby(trends["product_id"]).aggregate({"quantity_change": "sum", "stock_level": "first"}) # merge by product
         quantity_sold = abs(trends["quantity_change"].sum())
-
-        # we will choose to restock 80% to 120% of what was sold for that iteration
-        quantity_to_restock = randint(round(quantity_sold * 0.8), round(quantity_sold * 1.2)) 
-
+        
+        # we will choose to restock a chosen lower proportion % to a chosen upper proportion % of what was sold for that iteration
+        if config.PRODUCT_RESTOCK_LOWER_PROPORTION and config.PRODUCT_RESTOCK_UPPER_PROPORTION:
+            assert(config.PRODUCT_RESTOCK_LOWER_PROPORTION < config.PRODUCT_RESTOCK_UPPER_PROPORTION)
+            quantity_to_restock = randint(round(quantity_sold * config.PRODUCT_RESTOCK_LOWER_PROPORTION), round(quantity_sold * config.PRODUCT_RESTOCK_UPPER_PROPORTION))
+        elif not (config.PRODUCT_RESTOCK_LOWER_PROPORTION and config.PRODUCT_RESTOCK_UPPER_PROPORTION) and config.PRODUCT_RESTOCK_UNIFORM_PROPORTION:
+            assert(config.PRODUCT_RESTOCK_UNIFORM_PROPORTION > 0)
+            quantity_to_restock = quantity_sold * config.PRODUCT_RESTOCK_UNIFORM_PROPORTION
+        # vvv DEFAULT CASE vvv
+        elif not (config.PRODUCT_RESTOCK_LOWER_PROPORTION and config.PRODUCT_RESTOCK_UPPER_PROPORTION) and not config.PRODUCT_RESTOCK_UNIFORM_PROPORTION:
+            quantity_to_restock = randint(round(quantity_sold * 0.80), round(quantity_sold * 1.20))    
+        else: # case lower, upper and uniform proportions are set; dictates incorrect user usage
+            raise SystemError("Proportions set for simulation are verbose. Indicate either lower/upper restock proportions or the uniform proportion; but not both.")  
         '''
         ^^^^^ Sample ^^^^^
         product_id      quantity_change  stock_level
@@ -142,9 +153,9 @@ def thread_restock(data:List[dict])->pd.DataFrame:
         What if they were all extremely popular and successful and got sold so fast in previous iterations 
         (yet to be decided: days, weeks, months...). Then I would be fine allocation the chunk of 
         stock into these products by dividing fairly among them. With this same scenario; Imagine we hard 
-        capped the percentage allocation to 10% as you suggested. Then 4 out of the 28 products would be making up 90% of the total stock! 
-        Which I believe to be unfair!
-        
+        capped the percentage allocation to 10% as you suggested. Then 4 out of the 28 products would be making up 
+        90% of the total stock! Which I believe to be unfair!
+        ---
         If I'm wrong, or have any suggestions let me know :)
         '''
         
@@ -174,7 +185,6 @@ def thread_restock(data:List[dict])->pd.DataFrame:
         log.error(error)
         return
     
-    
 def map_restock(date, database:Commander, subset=100)->None: # take sample of the last 100 as default from the database (?)
     '''
     The `subset` parameter represents the number of "logged" data we will gather to find possible trends
@@ -188,7 +198,16 @@ def map_restock(date, database:Commander, subset=100)->None: # take sample of th
     log.info("3/3 Threading `inventory_log` restock process...")
     
     database.checkout_table("inventory_log") # take the sample
-    data = database.read_cols(filter={"change_type": "sale"}, limit=subset) # we will begin be observing a batch of inventory log sales
+    # we will begin be observing a batch of inventory log sales
+    if config.SALE_TREND_SUBSET:
+        assert(not config.SALE_TREND_SUBSET > 10) # need at least 10 records for minimal computation and precision
+        data = database.read(filter={"change_type": "sale"}, limit=config.SALE_TREND_SUBSET)
+    else:
+        data = database.read(filter={"change_type": "sale"}, limit=subset)
+    
+    if not data:
+        log.info("No minimal data found for filter for sales. Skipping system process.")
+        return
     
     dataframe = thread_restock(data)
     if dataframe is None:
@@ -198,7 +217,7 @@ def map_restock(date, database:Commander, subset=100)->None: # take sample of th
     
     dataframe["stock_level"] = dataframe["stock_level"] + dataframe["quantity_change"]
     dataframe["log_date"] = date
-    dataframe["warehouse"] = "United Warehouse Main, Washington, US"
+    dataframe["warehouse"] = choice(WAREHOUSES) if not config.WAREHOUSE_LISTING else choice(config.WAREHOUSE_LISTING)
     dataframe["change_type"] = "restock"
     dataframe["log_id"] = [create_invlog_id() for i in range(len(dataframe))]
     dataframe["reference_id"] = None
@@ -209,5 +228,5 @@ def map_restock(date, database:Commander, subset=100)->None: # take sample of th
         status = database.create_item(data)
         if status != 200:
             raise Exception(f"An error occurred when uploading `inventory_log` data. Code: {status}")
-    log.info("Process complete.")
+
     return

@@ -1,11 +1,11 @@
-from data.iterate import execute_iteration_thread
+from iterate import execute_iteration_thread
 
 from datetime import date, timedelta
 from time import sleep
 from random import randint
 import logging as log
 
-import config.config as config
+import sim_config as config
 from database.Commander import Commander
 
 logger = log.getLogger(__name__)
@@ -39,3 +39,6 @@ def thread_simulation():
         current_date = current_date + timedelta(days=1)
         sleep(1.5)
     return
+
+if __name__ == "__main__":
+    thread_simulation()
