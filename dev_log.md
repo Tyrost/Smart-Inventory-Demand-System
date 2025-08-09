@@ -531,10 +531,54 @@ else:
     upper = 0.30
 ```
 
-## July 31st, 9PM
+## July 31st, 9PM  
 
-I started working on the two options to running this program: CLI & AWS Lambda.
-The CLI will be primarily used as an internal tool for testing purposes, while Lambda will be used for production use.
+I started working on the two options to running this program: CLI & AWS Lambda.  
+The CLI would be used primarily as an internal tool for testing purposes, giving me an easy way to configure parameters (through the previously created global configuration system) without having to get into the codebase each time. By passing flags directly into the CLI, I could adjust bounds, iteration sizes, and simulation dates quickly while ensuring the configuration validation layer caught any logical or datatype errors before they could break the program. This minimized the risk of small bugs in during testing.
 
-The CLI utilizes various flags for their respective configuration-setting as discussed in the previous log, pretty straight forward tool.
+One issue I ran into during CLI testing was when two different configuration flags conflicted logically, causing the simulation to break mid-run. This happened because the **upper bound** for restocking was set lower than the **lower bound**, which was technically valid in code but not in logic. I fixed this by adding strict assertion checks in the validation function as a form of unit testing.
 
+From there, I began exploring AWS Lambda as the production runner. The idea was a serverless execution, no local dependencies, and the potential to trigger automatically in the cloud. I worked on adapting the program to Lambda’s constraints, even considering packaging dependencies in layers and adjusting the entry point for cloud execution. I created the standard lambda setup found in the `lambda` directory which calls the AWS SDK (boto3) that generates a function with the option to call the three different operations that we have worked on. Running the actual simulation, calling and generating metrics gathered from the simulation and the forecasting. We call the operation via lambda based on the standard `event` parameter that Lambda takes:
+
+```py
+function = event.get("function", "null")
+
+if function == "run":
+    response = ...
+elif function == "metric":
+    response = ...
+elif function == "forecast":
+    response = ...
+
+return {
+    "status": "success",
+    "response": response
+}
+```
+
+Now that we had created the actual lambda function we have to pack the runtime files into one builder directory inside of our app and remembering to fix the paths used for the modules. We also have to pass all the dependencies into this same directory for them to be installed when executed. The plan is the following:
+
+```
+[ Source Code + Dependencies ]
+↓
+[ Create Env & Install Requirements ]
+↓
+[ Package into Deployment Directory ]
+↓
+[ Zip Deployment Directory ]
+↓
+[ Upload to AWS Lambda Console ]
+```
+
+## August 2nd, 3PM
+
+As the implementation progressed, it became clear that the Lambda environment was introducing unnecessary complexity for this project’s scope. The dependency handling, execution limits, and lack of persistent local storage made it less practical than anticipated. After weighing the pros and cons, I decided Lambda was not the right fit here. After all, the purpose of the project was to mimic a real life simulation for me to apply statistical practices.
+
+I instead chose to keep execution local but make deployment and setup cleaner, which led to the final stage: containerization with Docker.  
+By creating a `Dockerfile` and `docker-compose.yml`, I could bundle the Python application, dependencies, and MySQL database into a single reproducible environment. The containerized approach also future proofs the application for deployment to any cloud service that supports Docker, should I decide to take it there later. 
+
+With Docker in place, the final product is portable, consistent, and ready to run without additional configuration to close this project.
+
+## August 9th, 1PM
+
+After many days of testing I configured some bugs with the implementation. For example I forgot some configuration variables here and there, added them and tested them. While the overall structure and kind of messy sometimes, I'm pretty confident that at the moment this has been my best work. This project took some time. There were days that I worked my job at talent questor while working on this project, until the day I quit. I took several experiences with me, and I continue to work from the work I've done. I have a clear idea for the future on how everything will work better. ChatGPT really pulled through on concepts I had not yet covered. I believe that the speed in which I've been able to learn has been incredible thanks to this amazing technology. I'm happy to know that I've used this tool responsibly as a companion rather than a do-it-all (vibe coding is just NOT for me). And I'm happy to say that this ambitious project has been completed.

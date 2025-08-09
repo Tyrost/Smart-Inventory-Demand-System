@@ -8,3 +8,5 @@ sidm_venv
 test.py
 
 lambda_build
+
+smart_inventory_lambda.zip
