@@ -1,12 +1,12 @@
-Most people throw data at an ML model and pray
-
 # Smart-Inventory-Demand-System Dev Log
 
 ## Overview
 
-SmartInventory AI is a cloud-deployable platform that predicts upcoming trends and demand spikes across content categories just like forecasting which pins, tags, or product types users will engage with next week or next month.
+SmartInventory AI is a cloud-deployable inventory demand prediction system that uses historical sales data, statistical analysis, and machine learning to forecast product demand.
 
-It helps content teams, ad managers, or algorithm engineers prepare inventory or promotion strategies ahead of time.
+It can predict upcoming trends and demand spikes across different product categories, helping teams plan restocking, promotions, and inventory allocation ahead of time.
+
+The platform integrates with MySQL for structured data storage, uses AWS Lambda for scalable execution, and supports both command-line simulation and automated forecasting pipelines. Predictions are generated using a trained Random Forest Regressor with metrics such as MAE and RMSE to measure accuracy.
 
 ## June 14th
 
